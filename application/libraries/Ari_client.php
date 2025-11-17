@@ -16,7 +16,6 @@ class Ari_client {
 
     public function __construct() {
         $this->CI =& get_instance();
-        $this->CI->load->model('Ari_log_model');
 
         // Load ARI configuration
         $this->base_url = $this->CI->config->item('ari_base_url');
@@ -61,17 +60,8 @@ class Ari_client {
         $error = curl_error($ch);
         curl_close($ch);
 
-        // Log request/response if debug is enabled
-        if ($this->debug) {
-            $this->CI->Ari_log_model->log_request(
-                $method,
-                $endpoint,
-                $data,
-                $response,
-                $status_code,
-                $error
-            );
-        }
+        // Note: ARI logging has been removed - using file-based logging instead
+        // Check /var/www/html/adial/logs/ for application logs
 
         if ($error) {
             return array('success' => false, 'error' => $error);
