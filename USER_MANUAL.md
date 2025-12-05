@@ -201,9 +201,34 @@ While campaign is running, you can see:
 - **Failed** - Unsuccessful attempts
 
 **Control Actions:**
-- **Pause** ⏸️ - Temporarily stop dialing (keeps current calls)
-- **Stop** ⏹️ - Stop campaign and hang up all calls
-- **Resume** ▶️ - Continue paused campaign
+
+#### ✅ **Verified Campaign Control Logic**
+
+**🛑 STOP Campaign:**
+- ✅ **Immediately stops** all new dial attempts
+- ✅ **Hangs up all active calls** for this campaign
+- ✅ **Resets ALL numbers to 'pending'** status
+- ✅ **Resets attempt counters to 0**
+- ⚠️ **Complete restart** - campaign starts fresh when restarted
+
+**⏸️ PAUSE Campaign:**
+- ✅ **Stops new dial attempts** immediately
+- ✅ **Keeps all active calls running** (no hangups)
+- ✅ **Preserves number statuses** (calling, answered, etc.)
+- ✅ **Preserves attempt counters**
+- 🔄 **True pause** - can resume exactly where it left off
+
+**▶️ START/RESUME Campaign:**
+- ✅ **Continues from current state** if previously paused
+- ✅ **Starts fresh** if previously stopped (numbers reset)
+- ✅ **Respects concurrent call limits**
+- ✅ **Processes pending numbers only**
+
+#### 💡 **Usage Tips:**
+- Use **PAUSE** for temporary breaks (lunch, meetings)
+- Use **STOP** to completely reset a campaign
+- **RESUME** works seamlessly after PAUSE
+- Monitor real-time on the **Monitoring** page
 
 ### Viewing Campaign Details
 

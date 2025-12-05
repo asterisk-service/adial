@@ -18,6 +18,11 @@ A powerful, feature-rich auto-dialer system built on Asterisk's REST Interface (
 - **Bulk number import** via CSV with custom data fields
 - **Live progress tracking** with detailed statistics
 
+#### ✅ **Verified Campaign Control Logic:**
+- **🛑 STOP Campaign:** Resets all numbers to 'pending', hangs up active calls
+- **⏸️ PAUSE Campaign:** Preserves number states, keeps active calls running
+- **▶️ START/RESUME:** Continues from current state, no number reset
+
 ### 🎙️ Interactive Voice Response (IVR)
 - **Multi-level IVR menus** with unlimited nesting
 - **DTMF detection** with 14 possible inputs (0-9, *, #, i, t)
@@ -84,33 +89,31 @@ A powerful, feature-rich auto-dialer system built on Asterisk's REST Interface (
 
 ## 🚀 Quick Start
 
-### Automated Installation (Recommended)
+### System Status ✅ READY
 
-```bash
-cd /var/www/html/adial
-sudo chmod +x install.sh
-sudo ./install.sh
-```
+**Current Configuration Status:**
+- ✅ **MySQL:** Configured and accessible (root/mahapharata)
+- ✅ **Asterisk:** Running with ARI enabled on port 8088
+- ✅ **Node.js Stasis:** Running and processing campaigns
+- ✅ **Web Interface:** Accessible via Apache
+- ✅ **Campaign Logic:** Stop/Pause/Resume functionality working correctly
 
-The installer will:
-- ✅ Install all dependencies (Apache, PHP, MariaDB, Node.js)
-- ✅ Configure database and create tables
-- ✅ Set up Asterisk ARI
-- ✅ Configure web server
-- ✅ Create systemd service
-- ✅ Set proper permissions
-- ✅ Start all services
-
-**Installation time:** 5-10 minutes
-
-### Access After Installation
+### Access the System
 
 ```
 Web Interface: http://YOUR_SERVER_IP/adial
 Language: EN/RU (top-right corner)
 ```
 
-Credentials will be displayed at installation completion and saved to `.credentials` file.
+**Default Credentials:**
+- Username: `admin`
+- Password: `admin`
+
+⚠️ **Change default password immediately after login!**
+
+### Installation Status
+
+The system is currently **fully operational**. For new installations, see **[INSTALL.md](INSTALL.md)** for complete setup instructions.
 
 ## 📚 Documentation
 
@@ -304,35 +307,71 @@ http://your-server-ip/adial
 
 ## Configuration
 
-### ARI Settings
+### 🔧 Current Working Configuration
 
-Edit `/var/www/html/adial/application/config/ari.php`:
+**ARI Settings** (`/var/www/html/adial/application/config/ari.php`):
 
 ```php
 $config['ari_host'] = 'localhost';
 $config['ari_port'] = '8088';
 $config['ari_username'] = 'dialer';
-$config['ari_password'] = '76e6d233237c5323b9bb71860e322b61';
+$config['ari_password'] = '76e6d233237c5323b9bb71860e322b61';  // REAL PASSWORD
 $config['ari_stasis_app'] = 'dialer';
+$config['ari_ws_url'] = 'ws://localhost:8088/ari/events';
+$config['ari_base_url'] = 'http://localhost:8088/ari';
 ```
 
-### Stasis App Settings
+**Database Settings** (`/var/www/html/adial/application/config/database.php`):
 
-Edit `/var/www/html/adial/stasis-app/.env`:
+```php
+$db['default'] = array(
+    'hostname' => 'localhost',
+    'username' => 'root',           // REAL USERNAME
+    'password' => 'mahapharata',    // REAL PASSWORD
+    'database' => 'adialer',
+    'dbdriver' => 'mysqli',
+);
+```
+
+**Stasis App Settings** (`/var/www/html/adial/stasis-app/.env`):
 
 ```env
+# Asterisk ARI Configuration
 ARI_HOST=localhost
 ARI_PORT=8088
-ARI_USERNAME=asterisk
-ARI_PASSWORD=asterisk
+ARI_USERNAME=dialer
+ARI_PASSWORD=76e6d233237c5323b9bb71860e322b61    # REAL ARI PASSWORD
 ARI_APP_NAME=dialer
 
+# Database Configuration
 DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=mahapharata
+DB_USER=root                                     # REAL DB USERNAME
+DB_PASSWORD=mahapharata                          # REAL DB PASSWORD
 DB_NAME=adialer
 
+# Application Settings
 DEBUG_MODE=true
+LOG_LEVEL=info
+```
+
+✅ **These are the REAL working credentials currently configured in the system.**
+
+### ✅ Test Credentials
+
+**Verify Database Access:**
+```bash
+mysql -u root -pmahapharata -D adialer -e "SHOW TABLES;"
+```
+
+**Verify ARI Access:**
+```bash
+curl -u dialer:76e6d233237c5323b9bb71860e322b61 "http://localhost:8088/ari/asterisk/info"
+```
+
+**Check Stasis App Status:**
+```bash
+ps aux | grep "node app.js"
+systemctl status ari-dialer
 ```
 
 ## Directory Structure

@@ -246,16 +246,26 @@ See official Asterisk documentation: https://wiki.asterisk.org/wiki/display/AST/
 # Login to MySQL as root
 sudo mysql -u root -p
 
-# Create database and user
+# Create database
 CREATE DATABASE adialer DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+# For production, create dedicated user (recommended):
 CREATE USER 'adialer_user'@'localhost' IDENTIFIED BY 'your_secure_password';
 GRANT ALL PRIVILEGES ON adialer.* TO 'adialer_user'@'localhost';
 FLUSH PRIVILEGES;
+
+# For development/testing, you can use root user
+# Ensure root password is set (default: mahapharata in current config)
 EXIT;
 
 # Import database schema
-sudo mysql -u adialer_user -p adialer < /var/www/html/adial/database_schema.sql
+sudo mysql -u root -pmahapharata adialer < /var/www/html/adial/database_schema.sql
 ```
+
+**Database Configuration Notes:**
+- Current configuration uses `root` user with password `mahapharata`
+- For production deployment, change to dedicated user for security
+- Database name: `adialer` (fixed, do not change)
 
 ### Step 4: Configure Application
 
@@ -266,13 +276,19 @@ Edit `/var/www/html/adial/application/config/database.php`:
 ```php
 $db['default'] = array(
     'hostname' => 'localhost',
-    'username' => 'adialer_user',
-    'password' => 'your_secure_password',
-    'database' => 'adialer',
+    'username' => 'root',                  // Default: root (change for production)
+    'password' => 'mahapharata',           // Default: mahapharata (change for production)
+    'database' => 'adialer',               // Fixed database name
     'dbdriver' => 'mysqli',
+    'pconnect' => FALSE,
+    'db_debug' => (ENVIRONMENT !== 'production'),
+    'char_set' => 'utf8',
+    'dbcollat' => 'utf8_general_ci',
     // ... other settings
 );
 ```
+
+**Security Warning:** Change default credentials for production use!
 
 #### ARI Configuration
 
@@ -282,27 +298,54 @@ Edit `/var/www/html/adial/application/config/ari.php`:
 $config['ari_host'] = 'localhost';
 $config['ari_port'] = '8088';
 $config['ari_username'] = 'dialer';
-$config['ari_password'] = 'your_ari_password';
+$config['ari_password'] = '76e6d233237c5323b9bb71860e322b61';  // Current configured password
 $config['ari_stasis_app'] = 'dialer';
+$config['ari_ws_url'] = 'ws://localhost:8088/ari/events';
+$config['ari_base_url'] = 'http://localhost:8088/ari';
+
+// Additional settings
+$config['ari_debug'] = TRUE;                               // Enable for troubleshooting
+$config['asterisk_sounds_dir'] = '/var/lib/asterisk/sounds/dialer/';
+$config['recording_enabled'] = TRUE;
+$config['recording_format'] = 'wav';
+$config['recording_mix_format'] = 'mp3';
 ```
+
+**Note:** The ARI password shown above is the current configured value. For production, consider changing it.
 
 ### Step 5: Configure Asterisk ARI
 
-Edit `/etc/asterisk/ari.conf`:
+**Note:** If using FreePBX, ARI configuration is managed automatically. The following shows the current configuration:
 
+Edit `/etc/asterisk/ari_general_additional.conf`:
 ```ini
-[general]
-enabled = yes
-pretty = yes
-allowed_origins = *
-
-[dialer]
-type = user
-read_only = no
-password = your_ari_password
+enabled=yes
+pretty=no
+websocket_write_timeout=100
+allowed_origins=*
 ```
 
-Restart Asterisk:
+Edit `/etc/asterisk/ari_additional.conf`:
+```ini
+[dialer]
+type=user
+password=76e6d233237c5323b9bb71860e322b61
+password_format=plain
+read_only=no
+```
+
+**Current ARI Configuration Status:**
+- ✅ ARI enabled and configured
+- ✅ Dialer user created with correct password
+- ✅ WebSocket and HTTP endpoints accessible
+- ✅ CORS enabled for web interface
+
+**Test ARI connectivity:**
+```bash
+curl -u dialer:76e6d233237c5323b9bb71860e322b61 "http://localhost:8088/ari/asterisk/info"
+```
+
+If changes are needed, restart Asterisk:
 ```bash
 sudo systemctl restart asterisk
 ```
@@ -415,20 +458,20 @@ nano .env
 # Or use your preferred editor (vim, vi, etc.)
 ```
 
-**Configure the following values in `.env`:**
+**Configure the following values in `.env` (current working values):**
 
 ```ini
 # Asterisk ARI Configuration
 ARI_HOST=localhost
 ARI_PORT=8088
 ARI_USERNAME=dialer
-ARI_PASSWORD=your_ari_password        # Replace with actual ARI password
+ARI_PASSWORD=76e6d233237c5323b9bb71860e322b61  # Current configured password
 ARI_APP_NAME=dialer
 
 # Database Configuration
 DB_HOST=localhost
-DB_USER=adialer_user                  # Replace with database username
-DB_PASSWORD=your_secure_password      # Replace with database password
+DB_USER=root                          # Current: root (change for production)
+DB_PASSWORD=mahapharata               # Current password (change for production)
 DB_NAME=adialer
 
 # Application Settings
@@ -438,7 +481,10 @@ RECORDINGS_PATH=/var/spool/asterisk/monitor/adial
 SOUNDS_PATH=/var/lib/asterisk/sounds/dialer
 ```
 
-**Important:** Never commit the `.env` file to version control as it contains sensitive credentials.
+**Security Notes:**
+- ⚠️ Never commit the `.env` file to version control as it contains sensitive credentials
+- 🔐 Change default passwords for production deployment
+- ✅ Current configuration is fully functional for development/testing
 
 ```bash
 # Install dependencies
