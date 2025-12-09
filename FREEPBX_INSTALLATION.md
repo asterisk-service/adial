@@ -18,6 +18,8 @@ Instead, use these FreePBX-safe methods:
 
 The `install.sh` script now detects FreePBX systems and:
 - Uses `ari_additional_custom.conf` for ARI user configuration
+- Skips installation of Apache, PHP, Asterisk, MariaDB (already present)
+- Only installs additional tools (Node.js, FFmpeg, SOX)
 - Avoids overwriting FreePBX Apache configurations
 - Installs alongside FreePBX without conflicts
 - Reloads Asterisk modules instead of full restart
@@ -29,6 +31,18 @@ cd /var/www/html/adial
 chmod +x install.sh
 ./install.sh
 ```
+
+**What the installer does on FreePBX:**
+- ✅ Detects FreePBX/Sangoma Linux automatically
+- ✅ Skips Apache, PHP, Asterisk, MariaDB installation (uses existing)
+- ✅ Installs only additional dependencies:
+  - Node.js 16.x (for Stasis app)
+  - FFmpeg (for audio conversion)
+  - SOX (for audio processing)
+- ✅ Creates ARI user in `ari_additional_custom.conf`
+- ✅ Configures database and application
+- ✅ Sets up systemd service for Stasis app
+- ✅ Preserves all FreePBX configurations
 
 ## Manual ARI Configuration (if needed)
 

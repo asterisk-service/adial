@@ -120,7 +120,9 @@ check_requirements() {
 install_dependencies() {
     print_header "Installing System Dependencies"
 
-    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
+    if [ "$IS_FREEPBX" = true ]; then
+        install_dependencies_freepbx
+    elif [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
         install_dependencies_centos
     elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
         install_dependencies_debian
@@ -128,6 +130,48 @@ install_dependencies() {
         print_error "Unsupported operating system: $OS"
         exit 1
     fi
+}
+
+install_dependencies_freepbx() {
+    print_info "Installing dependencies for FreePBX/Sangoma Linux..."
+    print_info "Skipping Apache, PHP, Asterisk, MariaDB (already installed by FreePBX)"
+
+    # FreePBX already has: Apache, PHP, Asterisk, MariaDB
+    # Only install additional tools needed
+
+    # Install basic tools if not present
+    yum install -y wget curl git vim nano unzip net-tools 2>/dev/null || true
+
+    # Check Node.js
+    if ! command -v node &> /dev/null; then
+        print_info "Installing Node.js..."
+        curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
+        yum install -y nodejs
+    else
+        print_success "Node.js already installed: $(node --version)"
+    fi
+
+    # Install FFmpeg for audio conversion (if not present)
+    if ! command -v ffmpeg &> /dev/null; then
+        print_info "Installing FFmpeg..."
+        yum install -y ffmpeg 2>/dev/null || print_warning "FFmpeg not available in default repos"
+    else
+        print_success "FFmpeg already installed"
+    fi
+
+    # Install SOX for audio processing (if not present)
+    if ! command -v sox &> /dev/null; then
+        print_info "Installing SOX..."
+        yum install -y sox
+    else
+        print_success "SOX already installed"
+    fi
+
+    print_success "Dependencies installed for FreePBX"
+    print_info "Using existing: Apache $(httpd -v 2>&1 | head -1 | cut -d'/' -f2 | cut -d' ' -f1)"
+    print_info "Using existing: PHP $(php -v | head -1 | cut -d' ' -f2)"
+    print_info "Using existing: Asterisk $(asterisk -V 2>&1 | cut -d' ' -f2)"
+    print_info "Using existing: MariaDB $(mysql --version 2>&1 | cut -d' ' -f6 | cut -d',' -f1)"
 }
 
 install_dependencies_centos() {
