@@ -4,6 +4,10 @@
 
 ### Step 1: Install Database Schema
 
+**For new installations:** API tokens are already included in `database_schema.sql` - skip this step!
+
+**For existing installations (upgrade):**
+
 Run the SQL migration to add API token support:
 
 ```bash

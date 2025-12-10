@@ -1,5 +1,7 @@
 -- API Tokens table for REST API authentication
--- Run this to add API token support to existing database
+--
+-- NOTE: This is now included in database_schema.sql for new installations
+-- Run this ONLY if upgrading an existing database that doesn't have API tokens
 
 DROP TABLE IF EXISTS `api_tokens`;
 CREATE TABLE `api_tokens` (

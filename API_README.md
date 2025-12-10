@@ -6,8 +6,11 @@ Complete RESTful API for ARI Dialer campaign management system. Control campaign
 
 ### 1. Install API Support
 
+**For new installations:** API tokens are already included in `database_schema.sql`
+
+**For existing installations (upgrade):**
 ```bash
-# Install database schema for API tokens
+# Add API tokens to existing database
 mysql -u root -p adialer < database_api_tokens.sql
 ```
 
