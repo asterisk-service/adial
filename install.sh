@@ -28,6 +28,10 @@ WEB_USER="apache"
 MIN_PHP_VERSION="7.2"
 MIN_NODE_VERSION="14"
 
+# Progress tracking
+CURRENT_STEP=0
+TOTAL_STEPS=12
+
 ################################################################################
 # Helper Functions
 ################################################################################
@@ -38,6 +42,21 @@ print_header() {
     echo "$1"
     echo "========================================================================"
     echo -e "${NC}"
+}
+
+print_step_header() {
+    CURRENT_STEP=$((CURRENT_STEP + 1))
+    echo ""
+    echo -e "${BLUE}"
+    echo "========================================================================"
+    echo "STEP ${CURRENT_STEP}/${TOTAL_STEPS}: $1"
+    echo "========================================================================"
+    echo -e "${NC}"
+}
+
+print_step_complete() {
+    echo -e "${GREEN}✓ STEP ${CURRENT_STEP}/${TOTAL_STEPS} COMPLETED: $1${NC}"
+    echo ""
 }
 
 print_success() {
@@ -165,7 +184,7 @@ check_requirements() {
 ################################################################################
 
 install_dependencies() {
-    print_header "Installing System Dependencies"
+    print_step_header "Installing System Dependencies"
 
     if [ "$IS_FREEPBX" = true ]; then
         install_dependencies_freepbx
@@ -299,10 +318,12 @@ install_dependencies_debian() {
     WEB_USER="www-data"
 
     print_success "Dependencies installed for Debian/Ubuntu"
+
+    print_step_complete "Installing System Dependencies"
 }
 
 install_asterisk() {
-    print_header "Checking Asterisk Installation"
+    print_step_header "Checking Asterisk Installation"
 
     if command -v asterisk &> /dev/null; then
         asterisk_version=$(asterisk -V | cut -d' ' -f2)
@@ -325,6 +346,7 @@ install_asterisk() {
         fi
     fi
 
+    print_step_complete "Checking Asterisk Installation"
     echo ""
 }
 
@@ -333,7 +355,7 @@ install_asterisk() {
 ################################################################################
 
 setup_database() {
-    print_header "Setting Up Database"
+    print_step_header "Setting Up Database"
 
     # Check if MariaDB/MySQL service is running
     print_info "Checking MariaDB/MySQL service status..."
@@ -426,6 +448,7 @@ setup_database() {
     fi
 
     print_success "Database setup completed"
+    print_step_complete "Setting Up Database"
     echo ""
 }
 
@@ -434,7 +457,7 @@ setup_database() {
 ################################################################################
 
 configure_application() {
-    print_header "Configuring Application"
+    print_step_header "Configuring Application"
 
     # Generate ARI password if not set
     if [ -z "$ARI_PASS" ]; then
@@ -443,6 +466,7 @@ configure_application() {
     fi
 
     print_info "Database and ARI configurations will be updated after Asterisk setup"
+    print_step_complete "Configuring Application"
     echo ""
 }
 
@@ -451,7 +475,7 @@ configure_application() {
 ################################################################################
 
 setup_directories() {
-    print_header "Setting Up Directories"
+    print_step_header "Setting Up Directories"
 
     # Create required directories
     mkdir -p "${ASTERISK_SOUNDS_DIR}"
@@ -480,6 +504,7 @@ setup_directories() {
     setfacl -R -m u:${WEB_USER}:rwx "${RECORDINGS_DIR}" 2>/dev/null || chmod -R 777 "${RECORDINGS_DIR}"
 
     print_success "Directories created and permissions set"
+    print_step_complete "Setting Up Directories"
     echo ""
 }
 
@@ -488,7 +513,7 @@ setup_directories() {
 ################################################################################
 
 configure_webserver() {
-    print_header "Configuring Web Server"
+    print_step_header "Configuring Web Server"
 
     if [ "$IS_FREEPBX" = true ]; then
         configure_apache_freepbx
@@ -607,6 +632,8 @@ EOF
     systemctl enable apache2
 
     print_success "Apache configured for Debian/Ubuntu"
+
+    print_step_complete "Configuring Web Server"
 }
 
 ################################################################################
@@ -614,7 +641,7 @@ EOF
 ################################################################################
 
 configure_asterisk() {
-    print_header "Configuring Asterisk ARI"
+    print_step_header "Configuring Asterisk ARI"
 
     # Generate ARI password if not set
     if [ -z "$ARI_PASS" ]; then
@@ -647,7 +674,8 @@ RECORDINGS_PATH=/var/spool/asterisk/monitor/adial
 SOUNDS_PATH=/var/lib/asterisk/sounds/dialer
 EOF
         chmod 600 "${INSTALL_DIR}/stasis-app/.env"
-        print_success "Stasis app .env file created with complete configuration"
+        print_success "✓✓✓ IMPORTANT: Stasis app .env file created at ${INSTALL_DIR}/stasis-app/.env ✓✓✓"
+        print_success "Configuration includes: ARI credentials + Database credentials"
     else
         print_warning "Stasis app directory not found at ${INSTALL_DIR}/stasis-app"
     fi
@@ -739,6 +767,7 @@ EOF
         print_success "Asterisk ARI configured"
     fi
 
+    print_step_complete "Configuring Asterisk ARI"
     echo ""
 }
 
@@ -747,7 +776,7 @@ EOF
 ################################################################################
 
 setup_nodejs_app() {
-    print_header "Setting Up Node.js Stasis Application"
+    print_step_header "Setting Up Node.js Stasis Application"
 
     if [ ! -d "${INSTALL_DIR}/stasis-app" ]; then
         print_warning "Stasis app directory not found"
@@ -760,6 +789,7 @@ setup_nodejs_app() {
     npm install --production
 
     print_success "Node.js dependencies installed"
+    print_step_complete "Setting Up Node.js Stasis Application"
     echo ""
 }
 
@@ -768,7 +798,7 @@ setup_nodejs_app() {
 ################################################################################
 
 setup_systemd_service() {
-    print_header "Setting Up Systemd Service"
+    print_step_header "Setting Up Systemd Service"
 
     print_info "Creating systemd service for ARI Dialer..."
 
@@ -797,6 +827,7 @@ EOF
     systemctl enable ari-dialer
 
     print_success "Systemd service created and enabled"
+    print_step_complete "Setting Up Systemd Service"
     echo ""
 }
 
@@ -805,7 +836,7 @@ EOF
 ################################################################################
 
 start_services() {
-    print_header "Starting Services"
+    print_step_header "Starting Services"
 
     # Start all services
     systemctl start mariadb 2>/dev/null || true
@@ -830,11 +861,12 @@ start_services() {
         print_info "Check logs: journalctl -u ari-dialer -n 50"
     fi
 
+    print_step_complete "Starting Services"
     echo ""
 }
 
 print_summary() {
-    print_header "Installation Complete!"
+    print_step_header "Installation Complete!"
 
     # Get server IP
     SERVER_IP=$(hostname -I | awk '{print $1}')
