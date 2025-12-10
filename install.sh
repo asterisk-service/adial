@@ -402,36 +402,69 @@ setup_database() {
     print_success "Database '${DB_NAME}' created"
 
     # Create user (MariaDB 5.5 compatible - drop first then create)
-    mysql_cmd -e "DROP USER '${DB_USER}'@'localhost';" > /dev/null 2>&1  # Ignore error if user doesn't exist
-    if ! mysql_cmd -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>&1; then
+    print_info "Checking if user already exists..."
+    if mysql_cmd -e "SELECT User FROM mysql.user WHERE User='${DB_USER}' AND Host='localhost';" 2>/dev/null | grep -q "${DB_USER}"; then
+        print_info "User '${DB_USER}' already exists, dropping..."
+        if mysql_cmd -e "DROP USER '${DB_USER}'@'localhost';" 2>&1; then
+            print_success "Existing user dropped"
+        else
+            print_error "Failed to drop existing user"
+            exit 1
+        fi
+    else
+        print_info "User does not exist yet"
+    fi
+
+    print_info "Creating database user '${DB_USER}'..."
+    CREATE_USER_OUTPUT=$(mysql_cmd -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" 2>&1)
+    CREATE_USER_STATUS=$?
+
+    if [ $CREATE_USER_STATUS -ne 0 ]; then
         print_error "Failed to create database user"
+        echo "Error output: $CREATE_USER_OUTPUT"
         exit 1
     fi
     print_success "Database user '${DB_USER}' created"
 
     # Grant privileges
-    if ! mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>&1; then
+    print_info "Granting privileges to user '${DB_USER}'..."
+    GRANT_OUTPUT=$(mysql_cmd -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';" 2>&1)
+    GRANT_STATUS=$?
+
+    if [ $GRANT_STATUS -ne 0 ]; then
         print_error "Failed to grant privileges"
+        echo "Error output: $GRANT_OUTPUT"
         exit 1
     fi
-    print_success "Privileges granted"
+    print_success "Privileges granted to '${DB_USER}' on database '${DB_NAME}'"
 
     # Flush privileges
-    if ! mysql_cmd -e "FLUSH PRIVILEGES;" 2>&1; then
+    print_info "Flushing privileges..."
+    FLUSH_OUTPUT=$(mysql_cmd -e "FLUSH PRIVILEGES;" 2>&1)
+    FLUSH_STATUS=$?
+
+    if [ $FLUSH_STATUS -ne 0 ]; then
         print_warning "Failed to flush privileges (non-critical)"
+        echo "Warning output: $FLUSH_OUTPUT"
+    else
+        print_success "Privileges flushed"
     fi
 
     # Import database schema
     if [ -f "${INSTALL_DIR}/database_schema.sql" ]; then
-        print_info "Importing database schema..."
-        if mysql_cmd "$DB_NAME" < "${INSTALL_DIR}/database_schema.sql"; then
-            print_success "Database schema imported"
-        else
+        print_info "Importing database schema from ${INSTALL_DIR}/database_schema.sql..."
+        SCHEMA_OUTPUT=$(mysql_cmd "$DB_NAME" < "${INSTALL_DIR}/database_schema.sql" 2>&1)
+        SCHEMA_STATUS=$?
+
+        if [ $SCHEMA_STATUS -ne 0 ]; then
             print_error "Failed to import database schema"
+            echo "Error output: $SCHEMA_OUTPUT"
             exit 1
         fi
+        print_success "Database schema imported successfully"
     else
-        print_warning "Database schema file not found"
+        print_warning "Database schema file not found at ${INSTALL_DIR}/database_schema.sql"
+        print_info "You may need to import the schema manually later"
     fi
 
     # Update database configuration immediately after database is created
