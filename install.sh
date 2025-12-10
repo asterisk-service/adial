@@ -1,8 +1,9 @@
 #!/bin/bash
 
 ################################################################################
-# ARI Dialer - Installation Script
+# ARI Dialer - Installation Script for Standalone Systems
 # Automated installation for CentOS/RHEL 7/8 and Debian/Ubuntu systems
+# NOT for FreePBX - use freepbx_install.sh instead
 ################################################################################
 
 set -e  # Exit on error
@@ -30,7 +31,7 @@ MIN_NODE_VERSION="14"
 
 # Progress tracking
 CURRENT_STEP=0
-TOTAL_STEPS=12
+TOTAL_STEPS=11
 
 ################################################################################
 # Helper Functions
@@ -93,11 +94,11 @@ detect_os() {
         exit 1
     fi
 
-    # Detect FreePBX/Sangoma systems
-    IS_FREEPBX=false
+    # Check if this is FreePBX
     if [[ "$OS" == "sangoma" ]] || [[ "$OS_NAME" == "Sangoma Linux" ]] || [ -d "/var/www/html/admin" ]; then
-        IS_FREEPBX=true
-        print_info "Detected FreePBX/Sangoma system"
+        print_error "FreePBX/Sangoma system detected!"
+        print_error "Please use freepbx_install.sh instead of this script"
+        exit 1
     fi
 
     print_info "Detected OS: $OS $OS_VERSION"
@@ -186,9 +187,7 @@ check_requirements() {
 install_dependencies() {
     print_step_header "Installing System Dependencies"
 
-    if [ "$IS_FREEPBX" = true ]; then
-        install_dependencies_freepbx
-    elif [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
+    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]]; then
         install_dependencies_centos
     elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
         install_dependencies_debian
@@ -196,48 +195,8 @@ install_dependencies() {
         print_error "Unsupported operating system: $OS"
         exit 1
     fi
-}
 
-install_dependencies_freepbx() {
-    print_info "Installing dependencies for FreePBX/Sangoma Linux..."
-    print_info "Skipping Apache, PHP, Asterisk, MariaDB (already installed by FreePBX)"
-
-    # FreePBX already has: Apache, PHP, Asterisk, MariaDB
-    # Only install additional tools needed
-
-    # Install basic tools if not present
-    yum install -y wget curl git vim nano unzip net-tools 2>/dev/null || true
-
-    # Check Node.js
-    if ! command -v node &> /dev/null; then
-        print_info "Installing Node.js..."
-        curl -fsSL https://rpm.nodesource.com/setup_16.x | bash -
-        yum install -y nodejs
-    else
-        print_success "Node.js already installed: $(node --version)"
-    fi
-
-    # Install FFmpeg for audio conversion (if not present)
-    if ! command -v ffmpeg &> /dev/null; then
-        print_info "Installing FFmpeg..."
-        yum install -y ffmpeg 2>/dev/null || print_warning "FFmpeg not available in default repos"
-    else
-        print_success "FFmpeg already installed"
-    fi
-
-    # Install SOX for audio processing (if not present)
-    if ! command -v sox &> /dev/null; then
-        print_info "Installing SOX..."
-        yum install -y sox
-    else
-        print_success "SOX already installed"
-    fi
-
-    print_success "Dependencies installed for FreePBX"
-    print_info "Using existing: Apache $(httpd -v 2>&1 | head -1 | cut -d'/' -f2 | cut -d' ' -f1)"
-    print_info "Using existing: PHP $(php -v | head -1 | cut -d' ' -f2)"
-    print_info "Using existing: Asterisk $(asterisk -V 2>&1 | cut -d' ' -f2)"
-    print_info "Using existing: MariaDB $(mysql --version 2>&1 | cut -d' ' -f6 | cut -d',' -f1)"
+    print_step_complete "Installing System Dependencies"
 }
 
 install_dependencies_centos() {
@@ -318,35 +277,41 @@ install_dependencies_debian() {
     WEB_USER="www-data"
 
     print_success "Dependencies installed for Debian/Ubuntu"
-
-    print_step_complete "Installing System Dependencies"
 }
 
+################################################################################
+# Asterisk Installation
+################################################################################
+
 install_asterisk() {
-    print_step_header "Checking Asterisk Installation"
+    print_step_header "Installing Asterisk"
 
     if command -v asterisk &> /dev/null; then
         asterisk_version=$(asterisk -V | cut -d' ' -f2)
         print_success "Asterisk is already installed: $asterisk_version"
-
-        # Check if ARI is enabled
-        if ! grep -q "enabled = yes" /etc/asterisk/ari.conf 2>/dev/null; then
-            print_warning "ARI may not be enabled in Asterisk"
-        fi
     else
-        print_warning "Asterisk is not installed"
-        print_info "Please install Asterisk manually or run:"
-        print_info "  For CentOS/RHEL: yum install asterisk"
-        print_info "  For Ubuntu/Debian: apt-get install asterisk"
+        print_warning "Asterisk is not installed. Installing now..."
 
-        read -p "Do you want to continue without Asterisk? (y/n): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]]; then
+            # Install Asterisk on CentOS/RHEL
+            yum install -y asterisk asterisk-devel
+        elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
+            # Install Asterisk on Debian/Ubuntu
+            apt-get install -y asterisk asterisk-dev
+        fi
+
+        if command -v asterisk &> /dev/null; then
+            print_success "Asterisk installed successfully"
+            systemctl enable asterisk
+            systemctl start asterisk
+        else
+            print_error "Failed to install Asterisk"
+            print_info "Please install Asterisk manually and run this script again"
             exit 1
         fi
     fi
 
-    print_step_complete "Checking Asterisk Installation"
+    print_step_complete "Installing Asterisk"
     echo ""
 }
 
@@ -486,24 +451,6 @@ setup_database() {
 }
 
 ################################################################################
-# Application Configuration
-################################################################################
-
-configure_application() {
-    print_step_header "Configuring Application"
-
-    # Generate ARI password if not set
-    if [ -z "$ARI_PASS" ]; then
-        ARI_PASS=$(generate_password)
-        print_info "Generated ARI password: $ARI_PASS"
-    fi
-
-    print_info "Database and ARI configurations will be updated after Asterisk setup"
-    print_step_complete "Configuring Application"
-    echo ""
-}
-
-################################################################################
 # Directory Setup
 ################################################################################
 
@@ -548,42 +495,13 @@ setup_directories() {
 configure_webserver() {
     print_step_header "Configuring Web Server"
 
-    if [ "$IS_FREEPBX" = true ]; then
-        configure_apache_freepbx
-    elif [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]] || [[ "$OS" == "sangoma" ]]; then
+    if [[ "$OS" == "centos" ]] || [[ "$OS" == "rhel" ]]; then
         configure_apache_centos
     elif [[ "$OS" == "ubuntu" ]] || [[ "$OS" == "debian" ]]; then
         configure_apache_debian
     fi
-}
 
-configure_apache_freepbx() {
-    print_info "Configuring Apache for FreePBX..."
-
-    # FreePBX already has Apache configured - just ensure our directory has proper permissions
-    print_info "FreePBX detected - skipping VirtualHost configuration"
-    print_info "ARI Dialer will be accessible at: http://your-server/adial"
-
-    # Ensure .htaccess is enabled (FreePBX usually has this enabled)
-    if [ -f /etc/httpd/conf.d/allowoverride.conf ]; then
-        print_success "AllowOverride already configured"
-    else
-        # Create a minimal config to ensure .htaccess works in our directory
-        cat > /etc/httpd/conf.d/adial-allowoverride.conf << 'EOF'
-<Directory /var/www/html/adial>
-    AllowOverride All
-</Directory>
-EOF
-        print_success "Created AllowOverride configuration for /var/www/html/adial"
-    fi
-
-    # Restart Apache to apply changes
-    systemctl restart httpd 2>/dev/null || true
-
-    print_success "Apache configured for FreePBX"
-    print_warning "Note: ARI Dialer is installed alongside FreePBX"
-    print_info "Access ARI Dialer at: http://$(hostname -I | awk '{print $1}')/adial"
-    print_info "Access FreePBX at:    http://$(hostname -I | awk '{print $1}')/admin"
+    print_step_complete "Configuring Web Server"
 }
 
 configure_apache_centos() {
@@ -665,8 +583,6 @@ EOF
     systemctl enable apache2
 
     print_success "Apache configured for Debian/Ubuntu"
-
-    print_step_complete "Configuring Web Server"
 }
 
 ################################################################################
@@ -682,8 +598,7 @@ configure_asterisk() {
         print_info "Generated ARI password: $ARI_PASS"
     fi
 
-    # Always create .env file for stasis-app, even if Asterisk is not installed yet
-    # This ensures the application is ready when Asterisk is installed later
+    # Always create .env file for stasis-app
     if [ -d "${INSTALL_DIR}/stasis-app" ]; then
         print_info "Creating stasis-app .env file..."
         cat > "${INSTALL_DIR}/stasis-app/.env" << EOF
@@ -727,62 +642,20 @@ EOF
     if ! command -v asterisk &> /dev/null; then
         print_warning "Asterisk not installed, skipping Asterisk ARI configuration"
         print_info "The .env file has been created. Install Asterisk and configure ARI manually."
+        print_step_complete "Configuring Asterisk ARI"
         echo ""
         return
     fi
 
-    print_info "Configuring ARI user..."
+    print_info "Configuring Asterisk ARI..."
 
-    if [ "$IS_FREEPBX" = true ]; then
-        # FreePBX detected - use ari_additional_custom.conf to avoid overwriting FreePBX managed configs
-        print_info "FreePBX detected - using ari_additional_custom.conf instead of ari.conf"
+    # Backup original ari.conf
+    if [ -f /etc/asterisk/ari.conf ]; then
+        cp /etc/asterisk/ari.conf /etc/asterisk/ari.conf.bak
+    fi
 
-        # Backup existing ari_additional_custom.conf if it exists
-        if [ -f /etc/asterisk/ari_additional_custom.conf ]; then
-            cp /etc/asterisk/ari_additional_custom.conf /etc/asterisk/ari_additional_custom.conf.bak
-        fi
-
-        # Check if ARI is already enabled in main ari.conf
-        if ! grep -q "enabled = yes" /etc/asterisk/ari.conf 2>/dev/null; then
-            print_warning "ARI may not be enabled in FreePBX"
-            print_info "Please enable ARI in FreePBX GUI: Settings -> Asterisk REST Interface (ARI)"
-        fi
-
-        # Create ARI user in ari_additional_custom.conf
-        # Check if user already exists in the file
-        if [ -f /etc/asterisk/ari_additional_custom.conf ] && grep -q "^\[${ARI_USER}\]" /etc/asterisk/ari_additional_custom.conf; then
-            # User exists, update password
-            print_info "Updating existing ARI user in ari_additional_custom.conf"
-            sed -i "/^\[${ARI_USER}\]/,/^\[/ s/^password = .*/password = ${ARI_PASS}/" /etc/asterisk/ari_additional_custom.conf
-        else
-            # Add new user
-            cat >> /etc/asterisk/ari_additional_custom.conf << EOF
-
-; ARI Dialer User Configuration
-[${ARI_USER}]
-type = user
-read_only = no
-password = ${ARI_PASS}
-EOF
-        fi
-
-        print_success "ARI user configured in ari_additional_custom.conf"
-
-        # Reload Asterisk (don't restart on FreePBX)
-        asterisk -rx "module reload res_ari.so" 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
-
-        print_info "Important: Verify ARI is enabled in FreePBX GUI:"
-        print_info "  Settings -> Asterisk REST Interface (ARI)"
-
-    else
-        # Standard Asterisk installation - safe to overwrite ari.conf
-        # Backup original ari.conf
-        if [ -f /etc/asterisk/ari.conf ]; then
-            cp /etc/asterisk/ari.conf /etc/asterisk/ari.conf.bak
-        fi
-
-        # Configure ARI
-        cat > /etc/asterisk/ari.conf << EOF
+    # Configure ARI
+    cat > /etc/asterisk/ari.conf << EOF
 [general]
 enabled = yes
 pretty = yes
@@ -794,12 +667,10 @@ read_only = no
 password = ${ARI_PASS}
 EOF
 
-        # Restart Asterisk
-        systemctl restart asterisk 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
+    # Restart Asterisk
+    systemctl restart asterisk 2>/dev/null || asterisk -rx "core reload" 2>/dev/null || true
 
-        print_success "Asterisk ARI configured"
-    fi
-
+    print_success "Asterisk ARI configured"
     print_step_complete "Configuring Asterisk ARI"
     echo ""
 }
@@ -909,27 +780,13 @@ print_summary() {
     echo "                    Installation Summary"
     echo "========================================================================"
     echo ""
-    if [ "$IS_FREEPBX" = true ]; then
-        echo "System Type: FreePBX/Sangoma Linux"
-        echo ""
-        echo "Web Interfaces:"
-        echo "  ARI Dialer:  http://${SERVER_IP}/adial"
-        echo "  FreePBX GUI: http://${SERVER_IP}/admin"
-        echo ""
-        echo "ARI Dialer Login:"
-        echo "  Username: admin"
-        echo "  Password: admin"
-        echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
-        echo ""
-    else
-        echo "Web Interface:"
-        echo "  URL: http://${SERVER_IP}/adial"
-        echo "  or:  http://localhost/adial"
-        echo "  Username: admin"
-        echo "  Password: admin"
-        echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
-        echo ""
-    fi
+    echo "Web Interface:"
+    echo "  URL: http://${SERVER_IP}/adial"
+    echo "  or:  http://localhost/adial"
+    echo "  Username: admin"
+    echo "  Password: admin"
+    echo "  ⚠️  CHANGE DEFAULT PASSWORD IMMEDIATELY!"
+    echo ""
     echo "Database:"
     echo "  Database: ${DB_NAME}"
     echo "  Username: ${DB_USER}"
@@ -939,14 +796,7 @@ print_summary() {
     echo "  Username: ${ARI_USER}"
     echo "  Password: ${ARI_PASS}"
     echo "  URL: http://localhost:8088/ari"
-    if [ "$IS_FREEPBX" = true ]; then
-        echo "  Config:   /etc/asterisk/ari_additional_custom.conf"
-        echo ""
-        echo "⚠️  FreePBX Note:"
-        echo "  • ARI user configured in ari_additional_custom.conf (FreePBX-safe)"
-        echo "  • Verify ARI is enabled: Settings -> Asterisk REST Interface"
-        echo "  • FreePBX configs in /etc/asterisk/ were NOT modified"
-    fi
+    echo "  Config:   /etc/asterisk/ari.conf"
     echo ""
     echo "Services:"
     echo "  • Web Server: $(systemctl is-active httpd apache2 2>/dev/null | grep active | head -1)"
@@ -1005,7 +855,9 @@ EOF
 ################################################################################
 
 main() {
-    print_header "ARI Dialer Installation Script"
+    print_header "ARI Dialer Installation Script - Standalone Systems"
+    print_warning "For FreePBX systems, use freepbx_install.sh instead"
+    echo ""
 
     # Pre-installation checks
     check_root
@@ -1027,7 +879,6 @@ main() {
     prompt_mysql_password
     setup_database
     setup_directories
-    configure_application
     configure_webserver
     configure_asterisk
     setup_nodejs_app
