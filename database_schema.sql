@@ -215,6 +215,14 @@ CREATE TABLE `users` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `users`
+-- Default admin user: username=admin, password=admin
+--
+
+INSERT INTO `users` (`id`, `username`, `password`, `email`, `full_name`, `role`, `is_active`, `api_access`, `created_at`, `updated_at`) VALUES
+(1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@localhost', 'Administrator', 'admin', 1, 1, NOW(), NOW());
+
+--
 -- Table structure for table `api_tokens`
 --
 
