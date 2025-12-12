@@ -145,6 +145,7 @@ CREATE TABLE `ivr_actions` (
   `action_value` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_menu_dtmf` (`ivr_menu_id`,`dtmf_digit`),
   KEY `ivr_menu_id` (`ivr_menu_id`),
   CONSTRAINT `ivr_actions_ibfk_1` FOREIGN KEY (`ivr_menu_id`) REFERENCES `ivr_menus` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8;
