@@ -1035,6 +1035,74 @@ function stasisEnd(event, channel) {
 }
 
 /**
+ * Handle channel destroyed - catches early failures (BUSY, NO ANSWER, etc.)
+ */
+function channelDestroyed(event, channel) {
+  logger.info(`Channel ${channel.id} destroyed - cause: ${event.cause} (${event.cause_txt})`);
+
+  // Ignore snoop channels
+  if (channel.id.startsWith('snoop-')) {
+    return;
+  }
+
+  // Check if this is one of our active calls
+  const callInfo = activeCalls.get(channel.id);
+
+  // Also check if it's an agent channel
+  let isAgentChannel = false;
+  if (!callInfo) {
+    for (const [custId, info] of activeCalls.entries()) {
+      if (info.agentChannel && info.agentChannel === channel.id) {
+        isAgentChannel = true;
+        logger.info(`Destroyed channel ${channel.id} is an agent channel for customer ${custId}`);
+        // Agent channels are cleaned up by channelLeftBridge or stasisEnd
+        return;
+      }
+    }
+  }
+
+  if (!callInfo) {
+    // Not one of our calls
+    return;
+  }
+
+  // If cleanup already in progress, skip
+  if (callInfo.cleanupInProgress) {
+    logger.info(`Channel ${channel.id} cleanup already in progress, skipping`);
+    return;
+  }
+
+  // Map Asterisk hangup cause to disposition
+  // See: https://wiki.asterisk.org/wiki/display/AST/Hangup+Cause+Mappings
+  let disposition = 'failed';
+  const cause = event.cause;
+
+  if (cause === 17 || cause === 21) {
+    // 17 = USER_BUSY, 21 = CALL_REJECTED
+    disposition = 'busy';
+    logger.info(`Call marked as BUSY (cause ${cause})`);
+  } else if (cause === 19) {
+    // 19 = NO_ANSWER
+    disposition = 'no-answer';
+    logger.info(`Call marked as NO ANSWER (cause ${cause})`);
+  } else if (cause === 16 || cause === 31) {
+    // 16 = NORMAL_CLEARING, 31 = NORMAL_UNSPECIFIED
+    // These usually mean answered and completed normally
+    disposition = callInfo.answerTime ? 'completed' : 'no-answer';
+    logger.info(`Call marked as ${disposition} (cause ${cause})`);
+  } else if (cause === 34) {
+    // 34 = CONGESTION
+    disposition = 'congestion';
+    logger.info(`Call marked as CONGESTION (cause ${cause})`);
+  } else {
+    logger.warn(`Unknown hangup cause ${cause} (${event.cause_txt}) - marking as failed`);
+  }
+
+  // Cleanup the call
+  hangupCall(channel.id, disposition);
+}
+
+/**
  * Hangup call and cleanup
  */
 async function hangupCall(channelId, disposition) {
@@ -1058,10 +1126,21 @@ async function hangupCall(channelId, disposition) {
     [duration, billsec, disposition, channelId]
   );
 
+  // Map disposition to campaign_numbers status
+  let numberStatus;
+  if (disposition === 'completed') {
+    numberStatus = 'completed';
+  } else if (disposition === 'answered') {
+    numberStatus = 'answered';
+  } else {
+    // busy, no-answer, congestion, failed all map to 'failed'
+    numberStatus = 'failed';
+  }
+
   // Update campaign number status
   await dbPool.execute(
     'UPDATE campaign_numbers SET status = ? WHERE id = ?',
-    [disposition === 'completed' ? 'completed' : 'failed', callInfo.numberId]
+    [numberStatus, callInfo.numberId]
   );
 
   // Stop bridge recording if any
@@ -1197,6 +1276,7 @@ async function main() {
     ariClient.on('StasisStart', stasisStart);
     ariClient.on('StasisEnd', stasisEnd);
     ariClient.on('ChannelLeftBridge', channelLeftBridge);
+    ariClient.on('ChannelDestroyed', channelDestroyed);
 
     ariClient.start(config.ari.app, (err) => {
       if (err) {
