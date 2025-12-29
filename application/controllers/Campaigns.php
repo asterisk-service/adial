@@ -62,7 +62,9 @@ class Campaigns extends MY_Controller {
                 'record_calls' => $this->input->post('record_calls') ? 1 : 0,
                 'concurrent_calls' => $this->input->post('concurrent_calls'),
                 'retry_times' => $this->input->post('retry_times'),
-                'retry_delay' => $this->input->post('retry_delay')
+                'retry_delay' => $this->input->post('retry_delay'),
+                'dial_timeout' => $this->input->post('dial_timeout'),
+                'call_timeout' => $this->input->post('call_timeout')
             );
 
             $campaign_id = $this->Campaign_model->create($campaign_data);
@@ -109,7 +111,9 @@ class Campaigns extends MY_Controller {
                 'record_calls' => $this->input->post('record_calls') ? 1 : 0,
                 'concurrent_calls' => $this->input->post('concurrent_calls'),
                 'retry_times' => $this->input->post('retry_times'),
-                'retry_delay' => $this->input->post('retry_delay')
+                'retry_delay' => $this->input->post('retry_delay'),
+                'dial_timeout' => $this->input->post('dial_timeout'),
+                'call_timeout' => $this->input->post('call_timeout')
             );
 
             if ($this->Campaign_model->update($id, $campaign_data)) {

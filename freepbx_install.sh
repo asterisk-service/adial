@@ -242,8 +242,8 @@ DB_PASSWORD=${DB_PASS}
 DB_NAME=${DB_NAME}
 
 # Application Settings
-DEBUG_MODE=true
-LOG_LEVEL=debug
+DEBUG_MODE=false
+LOG_LEVEL=info
 RECORDINGS_PATH=/var/spool/asterisk/monitor/adial
 SOUNDS_PATH=/var/lib/asterisk/sounds/dialer
 EOF

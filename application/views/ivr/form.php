@@ -22,19 +22,6 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label for="campaign_id"><?php echo $this->lang->line('ivr_campaign'); ?> *</label>
-                            <select class="form-control" id="campaign_id" name="campaign_id" required <?php echo isset($ivr_menu) ? 'disabled' : ''; ?>>
-                                <option value=""><?php echo $this->lang->line('ivr_select_campaign'); ?></option>
-                                <?php foreach ($campaigns as $campaign): ?>
-                                    <option value="<?php echo $campaign->id; ?>"
-                                        <?php echo (isset($ivr_menu) && $ivr_menu->campaign_id == $campaign->id) || ($campaign_id == $campaign->id) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($campaign->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
                             <label for="name"><?php echo $this->lang->line('ivr_name'); ?> *</label>
                             <input type="text" class="form-control" id="name" name="name"
                                    value="<?php echo isset($ivr_menu) ? htmlspecialchars($ivr_menu->name) : ''; ?>" required>
@@ -98,17 +85,27 @@
                                                     <option value="exten" <?php echo $action->action_type == 'exten' ? 'selected' : ''; ?>><?php echo $this->lang->line('ivr_action_call_extension'); ?></option>
                                                     <option value="queue" <?php echo $action->action_type == 'queue' ? 'selected' : ''; ?>><?php echo $this->lang->line('ivr_action_queue'); ?></option>
                                                     <option value="hangup" <?php echo $action->action_type == 'hangup' ? 'selected' : ''; ?>><?php echo $this->lang->line('ivr_action_hangup'); ?></option>
-                                                    <option value="playback" <?php echo $action->action_type == 'playback' ? 'selected' : ''; ?>><?php echo $this->lang->line('ivr_action_playback'); ?></option>
+                                                    <option value="goto_ivr" <?php echo $action->action_type == 'goto_ivr' ? 'selected' : ''; ?>><?php echo $this->lang->line('ivr_action_goto_ivr'); ?></option>
                                                 </select>
                                             </div>
                                             <div class="col-md-5 action-value-container">
                                                 <label><?php echo $this->lang->line('ivr_action_value'); ?></label>
                                                 <input type="text" class="form-control action-value-field" name="action_value[]"
                                                        value="<?php echo htmlspecialchars($action->action_value); ?>"
-                                                       placeholder="<?php echo $this->lang->line('ivr_help_action_placeholder'); ?>" <?php echo $action->action_type !== 'hangup' ? 'required' : ''; ?>>
+                                                       placeholder="<?php echo $this->lang->line('ivr_help_action_placeholder'); ?>" <?php echo $action->action_type !== 'hangup' && $action->action_type !== 'goto_ivr' ? 'required' : ''; ?>>
                                                 <small class="form-text text-muted action-queue-help" style="display:none;">
                                                     Enter queue number only (e.g., 600, 701). System will dial LOCAL/{queue}@from-internal
                                                 </small>
+                                                <select class="form-control action-ivr-select" style="display:none;">
+                                                    <option value="">-- Select IVR Menu --</option>
+                                                    <?php if (!empty($ivr_menus)): ?>
+                                                        <?php foreach ($ivr_menus as $menu): ?>
+                                                            <option value="<?php echo $menu->id; ?>" <?php echo $action->action_type == 'goto_ivr' && $action->action_value == $menu->id ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($menu->name); ?> (ID: <?php echo $menu->id; ?>)
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    <?php endif; ?>
+                                                </select>
                                             </div>
                                             <div class="col-md-1">
                                                 <label>&nbsp;</label><br>
@@ -142,7 +139,7 @@
                                                 <option value="exten"><?php echo $this->lang->line('ivr_action_call_extension'); ?></option>
                                                 <option value="queue"><?php echo $this->lang->line('ivr_action_queue'); ?></option>
                                                 <option value="hangup" selected><?php echo $this->lang->line('ivr_action_hangup'); ?></option>
-                                                <option value="playback"><?php echo $this->lang->line('ivr_action_playback'); ?></option>
+                                                <option value="goto_ivr"><?php echo $this->lang->line('ivr_action_goto_ivr'); ?></option>
                                             </select>
                                         </div>
                                         <div class="col-md-5 action-value-container">
@@ -152,6 +149,16 @@
                                             <small class="form-text text-muted action-queue-help" style="display:none;">
                                                 Enter queue number only (e.g., 600, 701). System will dial LOCAL/{queue}@from-internal
                                             </small>
+                                            <select class="form-control action-ivr-select" style="display:none;">
+                                                <option value="">-- Select IVR Menu --</option>
+                                                <?php if (!empty($ivr_menus)): ?>
+                                                    <?php foreach ($ivr_menus as $menu): ?>
+                                                        <option value="<?php echo $menu->id; ?>">
+                                                            <?php echo htmlspecialchars($menu->name); ?> (ID: <?php echo $menu->id; ?>)
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </select>
                                         </div>
                                         <div class="col-md-1">
                                             <label>&nbsp;</label><br>
@@ -184,7 +191,7 @@
                                                 <option value="exten"><?php echo $this->lang->line('ivr_action_call_extension'); ?></option>
                                                 <option value="queue"><?php echo $this->lang->line('ivr_action_queue'); ?></option>
                                                 <option value="hangup" selected><?php echo $this->lang->line('ivr_action_hangup'); ?></option>
-                                                <option value="playback"><?php echo $this->lang->line('ivr_action_playback'); ?></option>
+                                                <option value="goto_ivr"><?php echo $this->lang->line('ivr_action_goto_ivr'); ?></option>
                                             </select>
                                         </div>
                                         <div class="col-md-5 action-value-container">
@@ -194,6 +201,16 @@
                                             <small class="form-text text-muted action-queue-help" style="display:none;">
                                                 Enter queue number only (e.g., 600, 701). System will dial LOCAL/{queue}@from-internal
                                             </small>
+                                            <select class="form-control action-ivr-select" style="display:none;">
+                                                <option value="">-- Select IVR Menu --</option>
+                                                <?php if (!empty($ivr_menus)): ?>
+                                                    <?php foreach ($ivr_menus as $menu): ?>
+                                                        <option value="<?php echo $menu->id; ?>">
+                                                            <?php echo htmlspecialchars($menu->name); ?> (ID: <?php echo $menu->id; ?>)
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </select>
                                         </div>
                                         <div class="col-md-1">
                                             <label>&nbsp;</label><br>
@@ -260,13 +277,23 @@ $(document).ready(function() {
                             <option value="exten"><?php echo $this->lang->line('ivr_action_call_extension'); ?></option>
                             <option value="queue"><?php echo $this->lang->line('ivr_action_queue'); ?></option>
                             <option value="hangup"><?php echo $this->lang->line('ivr_action_hangup'); ?></option>
-                            <option value="playback"><?php echo $this->lang->line('ivr_action_playback'); ?></option>
+                            <option value="goto_ivr"><?php echo $this->lang->line('ivr_action_goto_ivr'); ?></option>
                         </select>
                     </div>
                     <div class="col-md-5 action-value-container">
                         <label><?php echo $this->lang->line('ivr_action_value'); ?></label>
                         <input type="text" class="form-control action-value-field" name="action_value[]"
                                placeholder="<?php echo $this->lang->line('ivr_help_action_placeholder'); ?>" required>
+                        <select class="form-control action-ivr-select" style="display:none;">
+                            <option value="">-- Select IVR Menu --</option>
+                            <?php if (!empty($ivr_menus)): ?>
+                                <?php foreach ($ivr_menus as $menu): ?>
+                                    <option value="<?php echo $menu->id; ?>">
+                                        <?php echo htmlspecialchars($menu->name); ?> (ID: <?php echo $menu->id; ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
                     </div>
                     <div class="col-md-1">
                         <label>&nbsp;</label><br>
@@ -296,15 +323,23 @@ $(document).ready(function() {
         var $actionRow = $(this).closest('.action-row');
         var $actionValueContainer = $actionRow.find('.action-value-container');
         var $actionValueField = $actionRow.find('.action-value-field');
+        var $ivrSelect = $actionRow.find('.action-ivr-select');
         var $queueHelp = $actionRow.find('.action-queue-help');
 
         if (actionType === 'hangup') {
             $actionValueContainer.hide();
-            $actionValueField.prop('required', false).val('');
+            $actionValueField.prop('required', false).val('').hide();
+            $ivrSelect.hide();
+            $queueHelp.hide();
+        } else if (actionType === 'goto_ivr') {
+            $actionValueContainer.show();
+            $actionValueField.prop('required', false).hide();
+            $ivrSelect.prop('required', true).show();
             $queueHelp.hide();
         } else {
             $actionValueContainer.show();
-            $actionValueField.prop('required', true);
+            $actionValueField.prop('required', true).show();
+            $ivrSelect.prop('required', false).hide();
 
             // Show queue help text only for queue action
             if (actionType === 'queue') {
@@ -313,6 +348,13 @@ $(document).ready(function() {
                 $queueHelp.hide();
             }
         }
+    });
+
+    // Handle IVR menu selection - copy value to action_value field
+    $(document).on('change', '.action-ivr-select', function() {
+        var $actionRow = $(this).closest('.action-row');
+        var $actionValueField = $actionRow.find('.action-value-field');
+        $actionValueField.val($(this).val());
     });
 
     // Trigger on page load for existing rows

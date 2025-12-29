@@ -43,6 +43,20 @@
                             <input type="number" class="form-control" id="retry_delay" name="retry_delay"
                                    value="<?php echo isset($campaign) ? $campaign->retry_delay : 300; ?>" min="60">
                         </div>
+
+                        <div class="form-group">
+                            <label for="dial_timeout"><?php echo $this->lang->line('campaigns_dial_timeout'); ?> *</label>
+                            <input type="number" class="form-control" id="dial_timeout" name="dial_timeout"
+                                   value="<?php echo isset($campaign) ? $campaign->dial_timeout : 30; ?>" min="5" max="120" required>
+                            <small class="form-text text-muted"><?php echo $this->lang->line('campaigns_help_dial_timeout'); ?></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="call_timeout"><?php echo $this->lang->line('campaigns_call_timeout'); ?> *</label>
+                            <input type="number" class="form-control" id="call_timeout" name="call_timeout"
+                                   value="<?php echo isset($campaign) ? $campaign->call_timeout : 300; ?>" min="60" max="7200" required>
+                            <small class="form-text text-muted"><?php echo $this->lang->line('campaigns_help_call_timeout'); ?></small>
+                        </div>
                     </div>
                 </div>
             </div>

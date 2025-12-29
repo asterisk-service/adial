@@ -88,6 +88,9 @@ class Ivr extends MY_Controller {
         $data['campaigns'] = $this->Campaign_model->get_all();
         $data['campaign_id'] = $campaign_id;
 
+        // Get all IVR menus for goto_ivr action
+        $data['ivr_menus'] = $this->Ivr_menu_model->get_all();
+
         $this->load->view('templates/header', $data);
         $this->load->view('ivr/form', $data);
         $this->load->view('templates/footer');
@@ -143,6 +146,9 @@ class Ivr extends MY_Controller {
 
         // Get campaigns
         $data['campaigns'] = $this->Campaign_model->get_all();
+
+        // Get all IVR menus for goto_ivr action
+        $data['ivr_menus'] = $this->Ivr_menu_model->get_all();
 
         $this->load->view('templates/header', $data);
         $this->load->view('ivr/form', $data);

@@ -13,7 +13,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $config['ari_host'] = 'localhost';
 $config['ari_port'] = '8088';
 $config['ari_username'] = 'dialer';
-$config['ari_password'] = '76e6d233237c5323b9bb71860e322b61';
+$config['ari_password'] = '4hX6y3kfq5DKYolm';
 $config['ari_stasis_app'] = 'dialer';
 $config['ari_ws_url'] = 'ws://localhost:8088/ari/events';
 $config['ari_base_url'] = 'http://localhost:8088/ari';

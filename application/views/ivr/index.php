@@ -32,7 +32,6 @@
                         <tr>
                             <th><?php echo $this->lang->line('ivr_id'); ?></th>
                             <th><?php echo $this->lang->line('name'); ?></th>
-                            <th><?php echo $this->lang->line('ivr_campaign'); ?></th>
                             <th><?php echo $this->lang->line('ivr_audio_file'); ?></th>
                             <th><?php echo $this->lang->line('ivr_timeout'); ?></th>
                             <th><?php echo $this->lang->line('ivr_max_digits'); ?></th>
@@ -49,11 +48,6 @@
                                     <td>
                                         <a href="<?php echo site_url('ivr/view/'.$menu->id); ?>">
                                             <strong><?php echo htmlspecialchars($menu->name); ?></strong>
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <a href="<?php echo site_url('campaigns/view/'.$menu->campaign_id); ?>">
-                                            Campaign #<?php echo $menu->campaign_id; ?>
                                         </a>
                                     </td>
                                     <td>
@@ -90,7 +84,7 @@
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="9" class="text-center">
+                                <td colspan="8" class="text-center">
                                     <?php echo $this->lang->line('ivr_no_menus'); ?>
                                 </td>
                             </tr>

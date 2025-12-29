@@ -87,6 +87,8 @@ CREATE TABLE `campaigns` (
   `concurrent_calls` int(11) NOT NULL DEFAULT '1',
   `retry_times` int(11) NOT NULL DEFAULT '0',
   `retry_delay` int(11) NOT NULL DEFAULT '300' COMMENT 'Retry delay in seconds',
+  `dial_timeout` int(11) NOT NULL DEFAULT '30' COMMENT 'Time to wait for number to answer (seconds)',
+  `call_timeout` int(11) NOT NULL DEFAULT '300' COMMENT 'Maximum conversation duration (seconds)',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -160,7 +162,7 @@ DROP TABLE IF EXISTS `ivr_menus`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ivr_menus` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `campaign_id` int(11) NOT NULL,
+  `campaign_id` int(11) DEFAULT NULL COMMENT 'Campaign ID (optional) - NULL for standalone IVR menus',
   `name` varchar(255) NOT NULL,
   `audio_file` varchar(255) NOT NULL COMMENT 'Path to audio file',
   `timeout` int(11) NOT NULL DEFAULT '10',
@@ -169,7 +171,7 @@ CREATE TABLE `ivr_menus` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `campaign_id` (`campaign_id`),
-  CONSTRAINT `ivr_menus_ibfk_1` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE CASCADE
+  CONSTRAINT `ivr_menus_ibfk_1` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

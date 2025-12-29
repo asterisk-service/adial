@@ -12,6 +12,8 @@ $lang['campaigns_description'] = 'Description';
 $lang['campaigns_concurrent_calls'] = 'Concurrent Calls';
 $lang['campaigns_retry_times'] = 'Retry Times';
 $lang['campaigns_retry_delay'] = 'Retry Delay (seconds)';
+$lang['campaigns_dial_timeout'] = 'Dial Timeout (seconds)';
+$lang['campaigns_call_timeout'] = 'Call Timeout (seconds)';
 $lang['campaigns_trunk_type'] = 'Trunk Type';
 $lang['campaigns_trunk_value'] = 'Trunk Value';
 $lang['campaigns_callerid'] = 'Caller ID';
@@ -38,6 +40,8 @@ $lang['campaigns_help_record_calls'] = 'Both channels will be recorded and mixed
 $lang['campaigns_help_custom'] = 'Enter full dial string (e.g., PJSIP/100, Local/100@from-internal)';
 $lang['campaigns_help_extension'] = 'Enter extension number (e.g., 100)';
 $lang['campaigns_help_ivr'] = 'Select IVR menu from dropdown below';
+$lang['campaigns_help_dial_timeout'] = 'Time to wait for number to answer before terminating (5-120 seconds)';
+$lang['campaigns_help_call_timeout'] = 'Maximum conversation duration limit (60-7200 seconds)';
 
 // Sections
 $lang['campaigns_section_basic'] = 'Basic Information';

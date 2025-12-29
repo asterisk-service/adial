@@ -140,10 +140,10 @@ function startCampaign(campaignId) {
 
   logger.info(`Starting campaign ${campaignId}: ${campaign.name}`);
 
-  // Process campaign every 2 seconds
+  // Process campaign every 100ms for near-instant dialing
   campaign.processInterval = setInterval(() => {
     processCampaign(campaignId);
-  }, 2000);
+  }, 100); // Check 10 times per second for immediate call processing
 }
 
 /**
@@ -204,7 +204,11 @@ async function processCampaign(campaignId) {
   try {
     // Check if we can make more calls
     const availableSlots = campaign.concurrent_calls - campaign.currentCalls;
-    if (availableSlots <= 0) return;
+
+    if (availableSlots <= 0) {
+      logger.debug(`Campaign ${campaignId}: No available slots (concurrent=${campaign.concurrent_calls}, current=${campaign.currentCalls})`);
+      return;
+    }
 
     // Get pending numbers to dial
     const [numbers] = await dbPool.execute(
@@ -214,6 +218,10 @@ async function processCampaign(campaignId) {
        LIMIT ?`,
       [campaignId, availableSlots]
     );
+
+    if (numbers.length > 0) {
+      logger.debug(`Campaign ${campaignId}: Found ${numbers.length} pending numbers, ${availableSlots} slots available`);
+    }
 
     // Dial each number
     for (const number of numbers) {
@@ -247,6 +255,7 @@ async function dialNumber(campaign, numberRecord) {
     // Originate call
     const channelId = `dialer-${campaign.id}-${numberRecord.id}-${Date.now()}`;
     const callerIdNumber = campaign.callerid || 'Unknown';
+    const dialTimeout = campaign.dial_timeout || 30; // Use campaign dial timeout (default 30 sec)
 
     const originateParams = {
       endpoint: endpoint,
@@ -254,7 +263,7 @@ async function dialNumber(campaign, numberRecord) {
       appArgs: `campaign=${campaign.id},number=${numberRecord.id}`,
       callerId: callerIdNumber,
       channelId: channelId,
-      timeout: 60
+      timeout: dialTimeout
     };
 
     logger.info(`ARI POST /channels - Originating call to ${numberRecord.phone_number}`);
@@ -421,6 +430,19 @@ function stasisStart(event, channel) {
       ['answered', callInfo.numberId]
     );
 
+    // Get campaign to check call_timeout
+    const campaign = activeCampaigns.get(callInfo.campaignId);
+    if (campaign && campaign.call_timeout) {
+      const callTimeout = (campaign.call_timeout || 300) * 1000; // Convert to milliseconds
+      logger.info(`Setting call timeout to ${campaign.call_timeout} seconds for channel ${channel.id}`);
+
+      // Set call duration timeout
+      callInfo.callTimeoutTimer = setTimeout(() => {
+        logger.info(`Call timeout reached (${campaign.call_timeout}s) for channel ${channel.id} - hanging up`);
+        hangupCall(channel.id, 'completed');
+      }, callTimeout);
+    }
+
     // Connect to agent
     connectToAgent(channel, callInfo);
   });
@@ -543,6 +565,7 @@ async function handleIVR(channel, callInfo, campaign) {
     logger.info(`ARI REQUEST: ${JSON.stringify({ media: audioPath }, null, 2)}`);
 
     let dtmfReceived = false;
+    let dtmfTimeout = null;
     const timeout = menu.timeout || 3; // Default 3 seconds
 
     const playback = ariClient.Playback();
@@ -555,20 +578,27 @@ async function handleIVR(channel, callInfo, campaign) {
       logger.info(`ARI RESPONSE: Successfully started playback ${playback.id} of ${audioPath}`);
     });
 
-    // Set timeout for DTMF input
-    const dtmfTimeout = setTimeout(() => {
+    // Listen for playback finished event
+    playback.on('PlaybackFinished', (event, playback) => {
       if (!dtmfReceived) {
-        logger.info(`DTMF timeout after ${timeout} seconds on channel ${channel.id}`);
-        // Find timeout action
-        const timeoutAction = actions.find(a => a.dtmf_digit === 't');
-        if (timeoutAction) {
-          executeIVRAction(channel, callInfo, timeoutAction, actions);
-        } else {
-          logger.warn(`No timeout action configured for IVR menu ${menu.id}`);
-          hangupCall(channel.id, 'completed');
-        }
+        logger.info(`IVR audio playback finished for ${playback.id} - starting ${timeout}s timeout for DTMF input`);
+
+        // Set timeout for DTMF input AFTER playback finishes
+        dtmfTimeout = setTimeout(() => {
+          if (!dtmfReceived) {
+            logger.info(`DTMF timeout after ${timeout} seconds on channel ${channel.id}`);
+            // Find timeout action
+            const timeoutAction = actions.find(a => a.dtmf_digit === 't');
+            if (timeoutAction) {
+              executeIVRAction(channel, callInfo, timeoutAction, actions, playback);
+            } else {
+              logger.warn(`No timeout action configured for IVR menu ${menu.id}`);
+              hangupCall(channel.id, 'completed');
+            }
+          }
+        }, timeout * 1000);
       }
-    }, timeout * 1000);
+    });
 
     // Listen for DTMF events
     channel.on('ChannelDtmfReceived', async (event, channel) => {
@@ -585,14 +615,14 @@ async function handleIVR(channel, callInfo, campaign) {
         // Find invalid action
         const invalidAction = actions.find(a => a.dtmf_digit === 'i');
         if (invalidAction) {
-          executeIVRAction(channel, callInfo, invalidAction, actions);
+          executeIVRAction(channel, callInfo, invalidAction, actions, playback);
         } else {
           logger.warn(`No invalid action configured for IVR menu ${menu.id}`);
         }
         return;
       }
 
-      executeIVRAction(channel, callInfo, action, actions);
+      executeIVRAction(channel, callInfo, action, actions, playback);
     });
 
   } catch (err) {
@@ -604,9 +634,20 @@ async function handleIVR(channel, callInfo, campaign) {
 /**
  * Execute an IVR action
  */
-async function executeIVRAction(channel, callInfo, action, actions) {
+async function executeIVRAction(channel, callInfo, action, actions, playback = null) {
   try {
     logger.info(`Executing IVR action: ${action.action_type} - ${action.action_value}`);
+
+    // Stop any active playback before executing action
+    if (playback) {
+      try {
+        await playback.stop();
+        logger.info(`Stopped playback ${playback.id} before executing action`);
+      } catch (err) {
+        // Playback might have already finished, ignore error
+        logger.debug(`Could not stop playback: ${err.message}`);
+      }
+    }
 
     // Execute action
     switch (action.action_type) {
@@ -638,7 +679,10 @@ async function executeIVRAction(channel, callInfo, action, actions) {
         break;
 
       case 'hangup':
-        channel.hangup();
+        logger.info(`Hanging up channel ${channel.id} per IVR action`);
+        await channel.hangup().catch(err => {
+          logger.warn(`Failed to hangup channel via ARI: ${err.message}`);
+        });
         break;
 
       case 'queue':
@@ -671,12 +715,19 @@ async function executeIVRAction(channel, callInfo, action, actions) {
         logger.info(`Queue channel added to bridge`);
         break;
 
-      case 'playback':
-        // Remove file extension and add dialer/ prefix
-        const playbackFile = action.action_value.replace(/\.(wav|gsm|ulaw|alaw)$/i, '');
-        const playbackPath = `sound:dialer/${playbackFile}`;
-        logger.info(`Playing IVR action audio: ${playbackPath}`);
-        channel.play({ media: playbackPath });
+      case 'goto_ivr':
+        // Go to another IVR menu by ID
+        const targetIvrId = action.action_value;
+        logger.info(`Going to IVR menu ID: ${targetIvrId}`);
+
+        // Create a campaign-like object with the target IVR ID
+        const virtualCampaign = {
+          id: 'goto_ivr',
+          agent_dest_value: targetIvrId
+        };
+
+        // Recursively call handleIVR with the new menu
+        await handleIVR(channel, callInfo, virtualCampaign);
         break;
 
       default:
@@ -1110,6 +1161,12 @@ async function hangupCall(channelId, disposition) {
   if (!callInfo) {
     logger.warn(`hangupCall called for ${channelId} but callInfo not found in activeCalls - may have been already cleaned up`);
     return;
+  }
+
+  // Clear call timeout timer if it exists
+  if (callInfo.callTimeoutTimer) {
+    clearTimeout(callInfo.callTimeoutTimer);
+    logger.debug(`Cleared call timeout timer for channel ${channelId}`);
   }
 
   logger.info(`Hanging up call ${channelId} with disposition ${disposition}`);
