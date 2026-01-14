@@ -10,6 +10,7 @@ class Ivr extends MY_Controller {
         $this->load->model('Campaign_model');
         $this->load->library('upload');
         $this->load->library('dialplan_generator');
+        $this->load->library('ami_scanner');
     }
 
     /**
@@ -95,6 +96,10 @@ class Ivr extends MY_Controller {
         // Get all IVR menus for goto_ivr action
         $data['ivr_menus'] = $this->Ivr_menu_model->get_all();
 
+        // Get available endpoints for extension selection
+        $endpoints_result = $this->ami_scanner->get_endpoints();
+        $data['endpoints'] = $endpoints_result['success'] && is_array($endpoints_result['data']) ? $endpoints_result['data'] : array();
+
         $this->load->view('templates/header', $data);
         $this->load->view('ivr/form', $data);
         $this->load->view('templates/footer');
@@ -156,6 +161,10 @@ class Ivr extends MY_Controller {
 
         // Get all IVR menus for goto_ivr action
         $data['ivr_menus'] = $this->Ivr_menu_model->get_all();
+
+        // Get available endpoints for extension selection
+        $endpoints_result = $this->ami_scanner->get_endpoints();
+        $data['endpoints'] = $endpoints_result['success'] && is_array($endpoints_result['data']) ? $endpoints_result['data'] : array();
 
         $this->load->view('templates/header', $data);
         $this->load->view('ivr/form', $data);

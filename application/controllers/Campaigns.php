@@ -6,6 +6,7 @@ class Campaigns extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library('ari_client');
+        $this->load->library('ami_scanner');
         $this->load->model('Campaign_model');
         $this->load->model('Campaign_number_model');
         $this->load->model('Ivr_menu_model');
@@ -78,7 +79,7 @@ class Campaigns extends MY_Controller {
         }
 
         // Get available endpoints for trunk selection
-        $endpoints_result = $this->ari_client->get_endpoints();
+        $endpoints_result = $this->ami_scanner->get_endpoints();
         $data['endpoints'] = $endpoints_result['success'] && is_array($endpoints_result['data']) ? $endpoints_result['data'] : array();
 
         // Get IVR menus for agent destination
@@ -125,7 +126,7 @@ class Campaigns extends MY_Controller {
         }
 
         // Get available endpoints for trunk selection
-        $endpoints_result = $this->ari_client->get_endpoints();
+        $endpoints_result = $this->ami_scanner->get_endpoints();
         $data['endpoints'] = $endpoints_result['success'] && is_array($endpoints_result['data']) ? $endpoints_result['data'] : array();
 
         // Get IVR menus for agent destination
