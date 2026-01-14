@@ -12,6 +12,7 @@ class Ami_status {
     private $ami_port;
     private $ami_username;
     private $ami_password;
+    private $cache = null; // Cache for current request
 
     public function __construct() {
         $this->CI =& get_instance();
@@ -26,107 +27,100 @@ class Ami_status {
     }
 
     /**
-     * Check AMI connection status
+     * Get all status info in ONE connection (fast!)
+     * Uses cache to avoid multiple connections in same request
      */
-    public function get_status() {
+    public function get_all_status() {
+        // Return cached result if available
+        if ($this->cache !== null) {
+            return $this->cache;
+        }
+
         try {
             $socket = $this->connect_ami();
             if (!$socket) {
-                return [
+                $this->cache = [
                     'success' => false,
                     'status' => 'offline',
-                    'error' => 'Failed to connect to AMI'
+                    'version' => 'Unknown',
+                    'uptime' => 'Unknown',
+                    'active_channels' => 0,
+                    'channels_list' => []
                 ];
+                return $this->cache;
             }
 
             $this->ami_login($socket);
 
-            // Get Asterisk version
+            // Get everything in one connection
             $version = $this->get_asterisk_version($socket);
-
-            // Get system info
-            $uptime = $this->get_system_uptime($socket);
+            $channels_info = $this->get_channels_info($socket);
 
             fclose($socket);
 
-            return [
+            $this->cache = [
                 'success' => true,
                 'status' => 'online',
                 'version' => $version,
-                'uptime' => $uptime
+                'uptime' => 'N/A', // Skip uptime command for speed
+                'active_channels' => $channels_info['count'],
+                'channels_list' => $channels_info['list']
             ];
+
+            return $this->cache;
 
         } catch (Exception $e) {
             log_message('error', 'AMI Status error: ' . $e->getMessage());
-            return [
+            $this->cache = [
                 'success' => false,
                 'status' => 'offline',
-                'error' => $e->getMessage()
+                'version' => 'Unknown',
+                'uptime' => 'Unknown',
+                'active_channels' => 0,
+                'channels_list' => []
             ];
+            return $this->cache;
         }
     }
 
     /**
-     * Get active channels count
+     * Check AMI connection status
      */
-    public function get_active_channels_count() {
+    public function get_status() {
+        $all = $this->get_all_status();
+        return [
+            'success' => $all['success'],
+            'status' => $all['status'],
+            'version' => $all['version'],
+            'uptime' => $all['uptime']
+        ];
+    }
+
+    /**
+     * Get channels info (count and list) in one call
+     */
+    private function get_channels_info($socket) {
         try {
-            $socket = $this->connect_ami();
-            if (!$socket) {
-                return 0;
-            }
-
-            $this->ami_login($socket);
-
             // Send CoreShowChannels action
             $this->send_action($socket, [
                 'Action' => 'CoreShowChannels'
             ]);
 
             $response = $this->read_response($socket);
-            fclose($socket);
 
-            // Parse channel count from response
+            // Parse channel count
+            $count = 0;
             if (preg_match('/(\d+)\s+active channels?/i', $response, $matches)) {
-                return (int)$matches[1];
+                $count = (int)$matches[1];
             }
 
-            return 0;
-
-        } catch (Exception $e) {
-            log_message('error', 'AMI channels count error: ' . $e->getMessage());
-            return 0;
-        }
-    }
-
-    /**
-     * Get active channels list
-     */
-    public function get_active_channels() {
-        try {
-            $socket = $this->connect_ami();
-            if (!$socket) {
-                return [];
-            }
-
-            $this->ami_login($socket);
-
-            // Send CoreShowChannels action
-            $this->send_action($socket, [
-                'Action' => 'CoreShowChannels'
-            ]);
-
-            $response = $this->read_response($socket);
-            fclose($socket);
-
-            // Parse channels from response
+            // Parse channels list
             $channels = [];
             $lines = explode("\n", $response);
 
             foreach ($lines as $line) {
                 if (preg_match('/^Event:\s+CoreShowChannel/i', $line)) {
                     $channel = [];
-                    // Read channel details
                     while ($line = array_shift($lines)) {
                         if (trim($line) === '') break;
                         if (preg_match('/^(\w+):\s*(.+)$/i', $line, $matches)) {
@@ -139,12 +133,27 @@ class Ami_status {
                 }
             }
 
-            return $channels;
+            return ['count' => $count, 'list' => $channels];
 
         } catch (Exception $e) {
-            log_message('error', 'AMI channels list error: ' . $e->getMessage());
-            return [];
+            return ['count' => 0, 'list' => []];
         }
+    }
+
+    /**
+     * Get active channels count
+     */
+    public function get_active_channels_count() {
+        $all = $this->get_all_status();
+        return $all['active_channels'];
+    }
+
+    /**
+     * Get active channels list
+     */
+    public function get_active_channels() {
+        $all = $this->get_all_status();
+        return $all['channels_list'];
     }
 
     /**
@@ -187,7 +196,7 @@ class Ami_status {
      * Connect to AMI
      */
     private function connect_ami() {
-        $socket = @fsockopen($this->ami_host, $this->ami_port, $errno, $errstr, 5);
+        $socket = @fsockopen($this->ami_host, $this->ami_port, $errno, $errstr, 1);
 
         if (!$socket) {
             log_message('error', "AMI Status: Failed to connect to AMI: $errstr ($errno)");
@@ -195,11 +204,11 @@ class Ami_status {
         }
 
         stream_set_blocking($socket, true);
-        stream_set_timeout($socket, 5);
+        stream_set_timeout($socket, 1);
 
         // Read welcome message
         $welcome = '';
-        $timeout = time() + 5;
+        $timeout = time() + 1;
         while (time() < $timeout) {
             $line = fgets($socket);
             if ($line === false) break;
@@ -221,7 +230,7 @@ class Ami_status {
         ]);
 
         $response = '';
-        $timeout = time() + 5;
+        $timeout = time() + 1;
         while (time() < $timeout) {
             $line = fgets($socket);
             if ($line === false) break;
@@ -252,12 +261,12 @@ class Ami_status {
      */
     private function read_response($socket) {
         $response = '';
-        $timeout = time() + 5;
+        $timeout = time() + 1;
 
         while (time() < $timeout) {
             $line = fgets($socket);
             if ($line === false) {
-                usleep(10000);
+                usleep(1000);
                 continue;
             }
 
@@ -276,13 +285,13 @@ class Ami_status {
      */
     private function read_command_response($socket) {
         $response = '';
-        $timeout = time() + 5;
+        $timeout = time() + 1;
         $emptyLines = 0;
 
         while (time() < $timeout) {
             $line = fgets($socket);
             if ($line === false) {
-                usleep(10000);
+                usleep(1000);
                 continue;
             }
 
@@ -290,7 +299,7 @@ class Ami_status {
 
             if (trim($line) === '') {
                 $emptyLines++;
-                if ($emptyLines >= 3) {
+                if ($emptyLines >= 2) {
                     break;
                 }
             } else {

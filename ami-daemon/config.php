@@ -36,7 +36,7 @@ return [
 
     // Application Settings
     'app' => [
-        'debug_mode' => false,
+        'debug_mode' => true,
         'log_level' => 'debug', // debug, info, warning, error
         'log_file' => '/var/www/html/adial/logs/ami-daemon.log',
         'pid_file' => '/var/www/html/adial/ami-daemon/daemon.pid',
