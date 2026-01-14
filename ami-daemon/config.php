@@ -37,7 +37,7 @@ return [
     // Application Settings
     'app' => [
         'debug_mode' => false,
-        'log_level' => 'info', // debug, info, warning, error
+        'log_level' => 'debug', // debug, info, warning, error
         'log_file' => '/var/www/html/adial/logs/ami-daemon.log',
         'pid_file' => '/var/www/html/adial/ami-daemon/daemon.pid',
         'recordings_path' => '/var/spool/asterisk/monitor/adial',
@@ -47,12 +47,12 @@ return [
     // Campaign Processing Settings
     'campaigns' => [
         // How often to check for active campaigns (in seconds)
-        'reload_interval' => 10,
+        'reload_interval' => 5,
 
         // How often to process each campaign (in seconds)
         'process_interval' => 2,
 
         // Minimum retry delay (in seconds)
-        'min_retry_delay' => 1
+        'min_retry_delay' => 60
     ]
 ];
