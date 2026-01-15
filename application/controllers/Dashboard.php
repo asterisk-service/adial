@@ -37,13 +37,10 @@ class Dashboard extends MY_Controller {
         $data['active_channels'] = $this->ami_status->get_active_channels_count();
         $data['channels_list'] = $this->ami_status->get_active_channels();
 
-        // Get recent CDR stats
-        $data['today_calls'] = $this->db->where('DATE(start_time)', date('Y-m-d'))
-                                        ->count_all_results('cdr');
-
-        $data['today_answered'] = $this->db->where('DATE(start_time)', date('Y-m-d'))
-                                           ->where('disposition', 'answered')
-                                           ->count_all_results('cdr');
+        // Get recent CDR stats from asteriskcdrdb
+        $cdr_stats = $this->Cdr_model->get_today_stats();
+        $data['today_calls'] = $cdr_stats['total'];
+        $data['today_answered'] = $cdr_stats['answered'];
 
         $this->load->view('templates/header', $data);
         $this->load->view('dashboard/index', $data);

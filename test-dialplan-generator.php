@@ -60,6 +60,12 @@ try {
     $dialplan .= " same => n,Set(CDR(userfield)=\${CAMPAIGN_ID}:\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(__CAMPAIGN_ID=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(__NUMBER_ID=\${NUMBER_ID})\n";
+    $dialplan .= " same => n,Set(YEAR=\${STRFTIME(\${EPOCH},,\%Y)})\n";
+    $dialplan .= " same => n,Set(MONTH=\${STRFTIME(\${EPOCH},,\%m)})\n";
+    $dialplan .= " same => n,Set(DAY=\${STRFTIME(\${EPOCH},,\%d)})\n";
+    $dialplan .= " same => n,Set(CALLFILENAME=\${CAMPAIGN_ID}-\${UNIQUEID})\n";
+    $dialplan .= " same => n,System(mkdir -p /var/spool/asterisk/monitor/dialer/\${YEAR}/\${MONTH}/\${DAY})\n";
+    $dialplan .= " same => n,MixMonitor(/var/spool/asterisk/monitor/dialer/\${YEAR}/\${MONTH}/\${DAY}/\${CALLFILENAME}.wav,b)\n";
     $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},60)\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
