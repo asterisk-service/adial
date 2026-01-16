@@ -109,6 +109,8 @@ exten => _X.,1,NoOp(Dialer Outbound: ${EXTEN} via ${TRUNK})
  same => n,Set(__NUMBER_ID=${NUMBER_ID})
  same => n,Set(__DIAL_TIMEOUT=${DIAL_TIMEOUT})
  same => n,Set(__CALL_TIMEOUT=${CALL_TIMEOUT})
+ same => n,Set(__DIALED_NUMBER=${DIALED_NUMBER})
+ same => n,Set(__DIALED_NAME=${DIALED_NAME})
  same => n,Set(YEAR=${STRFTIME(${EPOCH},,%Y)})
  same => n,Set(MONTH=${STRFTIME(${EPOCH},,%m)})
  same => n,Set(DAY=${STRFTIME(${EPOCH},,%d)})
@@ -121,8 +123,11 @@ exten => _X.,1,NoOp(Dialer Outbound: ${EXTEN} via ${TRUNK})
 [dialer_agent]
 ; Agent destination context - dials agent extension using CHANNEL_TYPE
 ; Uses CALL_TIMEOUT to limit maximum conversation duration (L option in milliseconds)
+; Sets CallerID to show dialed number and name from campaign
 exten => _X.,1,NoOp(Dialer Agent: Connecting to ${CHANNEL_TYPE}/${EXTEN})
  same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
+ same => n,Set(CALLERID(num)=${DIALED_NUMBER})
+ same => n,Set(CALLERID(name)=${DIALED_NAME})
  same => n,Set(CALL_TIMEOUT_MS=$[${CALL_TIMEOUT}*1000])
  same => n,UserEvent(AgentConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Agent:${EXTEN},ChannelType:${CHANNEL_TYPE})
  same => n,Dial(${CHANNEL_TYPE}/${EXTEN},${DIAL_TIMEOUT},L(${CALL_TIMEOUT_MS}))
@@ -132,8 +137,11 @@ exten => _X.,1,NoOp(Dialer Agent: Connecting to ${CHANNEL_TYPE}/${EXTEN})
 [dialer_queue]
 ; Queue destination context - puts caller into queue
 ; Uses CALL_TIMEOUT to limit maximum time in queue + conversation
+; Sets CallerID to show dialed number and name from campaign
 exten => _X.,1,NoOp(Dialer Queue: Adding to queue ${EXTEN})
  same => n,Set(CDR(accountcode)=${CAMPAIGN_ID})
+ same => n,Set(CALLERID(num)=${DIALED_NUMBER})
+ same => n,Set(CALLERID(name)=${DIALED_NAME})
  same => n,Set(TIMEOUT(absolute)=${CALL_TIMEOUT})
  same => n,UserEvent(QueueConnect,Campaign:${CAMPAIGN_ID},Number:${NUMBER_ID},Queue:${EXTEN})
  same => n,Queue(${EXTEN},t,,,${DIAL_TIMEOUT})
@@ -157,8 +165,11 @@ EOT;
         // Build context header
         $context = "[ivr-menu-{$menuId}]\n";
         $context .= "; IVR: {$menuName}\n";
+        $context .= "; Sets CallerID to show dialed number and name from campaign\n";
         $context .= "exten => s,1,NoOp(IVR Menu: {$menuName})\n";
         $context .= " same => n,Answer()\n";
+        $context .= " same => n,Set(CALLERID(num)=\${DIALED_NUMBER})\n";
+        $context .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
         $context .= " same => n,Wait(1)\n";
         $context .= " same => n,Set(TIMEOUT(digit)=5)\n";
         $context .= " same => n,Set(TIMEOUT(response)={$timeout})\n";

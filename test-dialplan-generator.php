@@ -64,6 +64,8 @@ try {
     $dialplan .= " same => n,Set(__NUMBER_ID=\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(__DIAL_TIMEOUT=\${DIAL_TIMEOUT})\n";
     $dialplan .= " same => n,Set(__CALL_TIMEOUT=\${CALL_TIMEOUT})\n";
+    $dialplan .= " same => n,Set(__DIALED_NUMBER=\${DIALED_NUMBER})\n";
+    $dialplan .= " same => n,Set(__DIALED_NAME=\${DIALED_NAME})\n";
     $dialplan .= " same => n,Set(YEAR=\${STRFTIME(\${EPOCH},,\%Y)})\n";
     $dialplan .= " same => n,Set(MONTH=\${STRFTIME(\${EPOCH},,\%m)})\n";
     $dialplan .= " same => n,Set(DAY=\${STRFTIME(\${EPOCH},,\%d)})\n";
@@ -77,8 +79,11 @@ try {
     $dialplan .= "[dialer_agent]\n";
     $dialplan .= "; Agent destination context - dials agent extension using CHANNEL_TYPE\n";
     $dialplan .= "; Uses CALL_TIMEOUT to limit maximum conversation duration (L option in milliseconds)\n";
+    $dialplan .= "; Sets CallerID to show dialed number and name from campaign\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Agent: Connecting to \${CHANNEL_TYPE}/\${EXTEN})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
+    $dialplan .= " same => n,Set(CALLERID(num)=\${DIALED_NUMBER})\n";
+    $dialplan .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
     $dialplan .= " same => n,Set(CALL_TIMEOUT_MS=\$[\${CALL_TIMEOUT}*1000])\n";
     $dialplan .= " same => n,UserEvent(AgentConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Agent:\${EXTEN},ChannelType:\${CHANNEL_TYPE})\n";
     $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},\${DIAL_TIMEOUT},L(\${CALL_TIMEOUT_MS}))\n";
@@ -89,8 +94,11 @@ try {
     $dialplan .= "[dialer_queue]\n";
     $dialplan .= "; Queue destination context - puts caller into queue\n";
     $dialplan .= "; Uses CALL_TIMEOUT to limit maximum time in queue + conversation\n";
+    $dialplan .= "; Sets CallerID to show dialed number and name from campaign\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Queue: Adding to queue \${EXTEN})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
+    $dialplan .= " same => n,Set(CALLERID(num)=\${DIALED_NUMBER})\n";
+    $dialplan .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
     $dialplan .= " same => n,Set(TIMEOUT(absolute)=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,UserEvent(QueueConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Queue:\${EXTEN})\n";
     $dialplan .= " same => n,Queue(\${EXTEN},t,,,\${DIAL_TIMEOUT})\n";
@@ -101,8 +109,11 @@ try {
     foreach ($menus as $menu) {
         $dialplan .= "[ivr-menu-{$menu->id}]\n";
         $dialplan .= "; IVR: {$menu->name}\n";
+        $dialplan .= "; Sets CallerID to show dialed number and name from campaign\n";
         $dialplan .= "exten => s,1,NoOp(IVR Menu: {$menu->name})\n";
         $dialplan .= " same => n,Answer()\n";
+        $dialplan .= " same => n,Set(CALLERID(num)=\${DIALED_NUMBER})\n";
+        $dialplan .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
         $dialplan .= " same => n,Wait(1)\n";
         $dialplan .= " same => n,Set(TIMEOUT(digit)=5)\n";
         $dialplan .= " same => n,Set(TIMEOUT(response)={$menu->timeout})\n";

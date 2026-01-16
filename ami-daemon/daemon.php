@@ -349,6 +349,13 @@ class ADialDaemon {
         $numberId = $number->id;
         $phoneNumber = $number->phone_number;
 
+        // Get name from number data JSON (if available)
+        $dialedName = '';
+        if (!empty($number->data)) {
+            $data = json_decode($number->data, true);
+            $dialedName = $data['name'] ?? '';
+        }
+
         // Build trunk endpoint
         $trunkType = strtoupper($campaign['trunk_type']);
         $trunkValue = $campaign['trunk_value'];
@@ -418,7 +425,9 @@ class ADialDaemon {
                     "TRUNK=$trunkEndpoint",
                     "CHANNEL_TYPE=$channelType",
                     "DIAL_TIMEOUT=$dialTimeout",
-                    "CALL_TIMEOUT=$callTimeout"
+                    "CALL_TIMEOUT=$callTimeout",
+                    "DIALED_NUMBER=$phoneNumber",
+                    "DIALED_NAME=$dialedName"
                 ],
                 'Async' => 'true'
             ];
