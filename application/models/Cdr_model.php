@@ -46,6 +46,7 @@ class Cdr_model extends CI_Model {
 
         // Select with aliases to match view expectations
         // asteriskcdrdb.cdr fields: calldate, clid, src, dst, duration, billsec, disposition, accountcode, uniqueid, userfield, recordingfile
+        // userfield format: campaign_id:number_id:agent_dest (agent_dest added for new calls)
         return $this->cdr_db->select("
                 *,
                 uniqueid as id,
@@ -56,7 +57,11 @@ class Cdr_model extends CI_Model {
                 DATE_ADD(calldate, INTERVAL duration SECOND) as end_time,
                 src as callerid,
                 dst as destination,
-                dstchannel as agent,
+                CASE
+                    WHEN LENGTH(userfield) - LENGTH(REPLACE(userfield, ':', '')) >= 2
+                    THEN SUBSTRING_INDEX(userfield, ':', -1)
+                    ELSE NULL
+                END as agent,
                 LOWER(disposition) as disposition,
                 recordingfile as recording_file
             ", FALSE)
@@ -124,7 +129,11 @@ class Cdr_model extends CI_Model {
                 DATE_ADD(calldate, INTERVAL duration SECOND) as end_time,
                 src as callerid,
                 dst as destination,
-                dstchannel as agent,
+                CASE
+                    WHEN LENGTH(userfield) - LENGTH(REPLACE(userfield, ':', '')) >= 2
+                    THEN SUBSTRING_INDEX(userfield, ':', -1)
+                    ELSE NULL
+                END as agent,
                 LOWER(disposition) as disposition,
                 recordingfile as recording_file
             ", FALSE)

@@ -427,7 +427,8 @@ class ADialDaemon {
                     "DIAL_TIMEOUT=$dialTimeout",
                     "CALL_TIMEOUT=$callTimeout",
                     "DIALED_NUMBER=$phoneNumber",
-                    "DIALED_NAME=$dialedName"
+                    "DIALED_NAME=$dialedName",
+                    "AGENT_DEST=$destExten"
                 ],
                 'Async' => 'true'
             ];

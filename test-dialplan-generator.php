@@ -59,13 +59,14 @@ try {
     $dialplan .= "; CALL_TIMEOUT: max call duration after answer (30-3600 sec, default 600)\n";
     $dialplan .= "exten => _X.,1,NoOp(Dialer Outbound: \${EXTEN} via \${TRUNK})\n";
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
-    $dialplan .= " same => n,Set(CDR(userfield)=\${CAMPAIGN_ID}:\${NUMBER_ID})\n";
+    $dialplan .= " same => n,Set(CDR(userfield)=\${CAMPAIGN_ID}:\${NUMBER_ID}:\${AGENT_DEST})\n";
     $dialplan .= " same => n,Set(__CAMPAIGN_ID=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(__NUMBER_ID=\${NUMBER_ID})\n";
     $dialplan .= " same => n,Set(__DIAL_TIMEOUT=\${DIAL_TIMEOUT})\n";
     $dialplan .= " same => n,Set(__CALL_TIMEOUT=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,Set(__DIALED_NUMBER=\${DIALED_NUMBER})\n";
     $dialplan .= " same => n,Set(__DIALED_NAME=\${DIALED_NAME})\n";
+    $dialplan .= " same => n,Set(__AGENT_DEST=\${AGENT_DEST})\n";
     $dialplan .= " same => n,Set(YEAR=\${STRFTIME(\${EPOCH},,\%Y)})\n";
     $dialplan .= " same => n,Set(MONTH=\${STRFTIME(\${EPOCH},,\%m)})\n";
     $dialplan .= " same => n,Set(DAY=\${STRFTIME(\${EPOCH},,\%d)})\n";
