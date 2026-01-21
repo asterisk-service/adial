@@ -75,11 +75,9 @@ try {
     $dialplan .= " same => n,System(mkdir -p /var/spool/asterisk/monitor/dialer/\${YEAR}/\${MONTH}/\${DAY})\n";
     $dialplan .= " same => n,MixMonitor(\${RECORDING_PATH},b)\n";
     $dialplan .= " same => n,Set(CDR(recordingfile)=\${RECORDING_PATH})\n";
-    $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},\${DIAL_TIMEOUT})\n";
+    $dialplan .= " same => n,Dial(\${TRUNK}/\${EXTEN},\${DIAL_TIMEOUT},g)\n";
     $dialplan .= " same => n,UserEvent(DialStatus_A,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS})\n";
-    $dialplan .= " same => n,GotoIf(\$[\"\${DIALSTATUS}\" != \"ANSWER\"]?hangup)\n";
-    $dialplan .= " same => n,Hangup()\n";
-    $dialplan .= " same => n(hangup),Hangup()\n\n";
+    $dialplan .= " same => n,Hangup()\n\n";
 
     // Agent destination context
     $dialplan .= "[dialer_agent]\n";
@@ -92,7 +90,7 @@ try {
     $dialplan .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
     $dialplan .= " same => n,Set(CALL_TIMEOUT_MS=\$[\${CALL_TIMEOUT}*1000])\n";
     $dialplan .= " same => n,UserEvent(AgentConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Agent:\${EXTEN},ChannelType:\${CHANNEL_TYPE})\n";
-    $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},\${DIAL_TIMEOUT},L(\${CALL_TIMEOUT_MS}))\n";
+    $dialplan .= " same => n,Dial(\${CHANNEL_TYPE}/\${EXTEN},\${DIAL_TIMEOUT},gL(\${CALL_TIMEOUT_MS}))\n";
     $dialplan .= " same => n,UserEvent(DialStatus_B,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Status:\${DIALSTATUS},Dest:\${EXTEN})\n";
     $dialplan .= " same => n,Hangup()\n\n";
 
