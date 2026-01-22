@@ -103,6 +103,9 @@ try {
     $dialplan .= " same => n,Set(CDR(accountcode)=\${CAMPAIGN_ID})\n";
     $dialplan .= " same => n,Set(CALLERID(num)=\${DIALED_NUMBER})\n";
     $dialplan .= " same => n,Set(CALLERID(name)=\${DIALED_NAME})\n";
+    $dialplan .= " same => n,Set(__NODEST=\${EXTEN})\n";
+    $dialplan .= " same => n,Set(QAGENT=\${EXTEN})\n";
+    $dialplan .= " same => n,Set(__FROMQ=true)\n";
     $dialplan .= " same => n,Set(TIMEOUT(absolute)=\${CALL_TIMEOUT})\n";
     $dialplan .= " same => n,UserEvent(QueueConnect,Campaign:\${CAMPAIGN_ID},Number:\${NUMBER_ID},Queue:\${EXTEN})\n";
     $dialplan .= " same => n,Queue(\${EXTEN},t,,,\${DIAL_TIMEOUT})\n";
