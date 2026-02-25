@@ -2,14 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 $lang['settings_title'] = 'Настройки';
-$lang['settings_ari'] = 'Конфигурация ARI';
 $lang['settings_general'] = 'Общие настройки';
-
-// ARI Settings
-$lang['settings_ari_url'] = 'URL ARI';
-$lang['settings_ari_username'] = 'Имя пользователя ARI';
-$lang['settings_ari_password'] = 'Пароль ARI';
-$lang['settings_ari_app_name'] = 'Имя приложения';
 
 // General Settings
 $lang['settings_recording_path'] = 'Путь записи';

@@ -4,9 +4,6 @@
             <h2>System Settings</h2>
         </div>
         <div class="col-md-6 text-right">
-            <button type="button" class="btn btn-info" id="testAriBtn">
-                <i class="fas fa-plug"></i> Test ARI Connection
-            </button>
         </div>
     </div>
 
@@ -295,30 +292,6 @@
 
 <script>
 $(document).ready(function() {
-    // Test ARI connection
-    $('#testAriBtn').click(function() {
-        var $btn = $(this);
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Testing...');
-
-        $.ajax({
-            url: '<?php echo site_url('settings/test_ari'); ?>',
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    alert('✓ ARI Connection Successful!\n\nAsterisk Version: ' + (response.data && response.data.system ? response.data.system.version : 'Unknown'));
-                } else {
-                    alert('✗ ARI Connection Failed\n\n' + response.message);
-                }
-                $btn.prop('disabled', false).html('<i class="fas fa-plug"></i> Test ARI Connection');
-            },
-            error: function() {
-                alert('✗ Failed to test ARI connection');
-                $btn.prop('disabled', false).html('<i class="fas fa-plug"></i> Test ARI Connection');
-            }
-        });
-    });
-
     // Add User
     $('#addUserForm').submit(function(e) {
         e.preventDefault();

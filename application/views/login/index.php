@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Asterisk ARI Dialer</title>
+    <title>Login - A-Dial</title>
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -97,7 +97,7 @@
                 <div class="login-icon">
                     <i class="fas fa-phone-alt"></i>
                 </div>
-                <h2>Asterisk ARI Dialer</h2>
+                <h2>A-Dial</h2>
                 <p>Sign in to continue</p>
             </div>
 
@@ -149,7 +149,7 @@
 
             <div class="login-footer">
                 <p>Default credentials: <strong>admin</strong> / <strong>admin</strong></p>
-                <p>&copy; <?php echo date('Y'); ?> Asterisk ARI Dialer</p>
+                <p>&copy; <?php echo date('Y'); ?> A-Dial</p>
             </div>
         </div>
     </div>

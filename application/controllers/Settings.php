@@ -37,18 +37,6 @@ class Settings extends MY_Controller {
     }
 
     /**
-     * Test ARI connection
-     */
-    public function test_ari() {
-        $this->load->library('ari_client');
-
-        $result = $this->ari_client->test_connection();
-
-        header('Content-Type: application/json');
-        echo json_encode($result);
-    }
-
-    /**
      * Add user (AJAX)
      */
     public function add_user() {

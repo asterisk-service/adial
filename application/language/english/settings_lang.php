@@ -2,14 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 $lang['settings_title'] = 'Settings';
-$lang['settings_ari'] = 'ARI Configuration';
 $lang['settings_general'] = 'General Settings';
-
-// ARI Settings
-$lang['settings_ari_url'] = 'ARI URL';
-$lang['settings_ari_username'] = 'ARI Username';
-$lang['settings_ari_password'] = 'ARI Password';
-$lang['settings_ari_app_name'] = 'Application Name';
 
 // General Settings
 $lang['settings_recording_path'] = 'Recording Path';

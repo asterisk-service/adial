@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Asterisk ARI Dialer - Stop Script
+# A-Dial - Stop Script
 
 echo "================================"
-echo "Stopping Asterisk ARI Dialer"
+echo "Stopping A-Dial"
 echo "================================"
 echo ""
 

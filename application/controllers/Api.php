@@ -5,7 +5,7 @@ require_once APPPATH . 'core/API_Controller.php';
 
 /**
  * API Controller v1
- * RESTful API for ARI Dialer
+ * RESTful API for A-Dial
  *
  * Authentication: Bearer token in Authorization header
  * Example: Authorization: Bearer your_api_token_here
@@ -34,7 +34,7 @@ class Api extends API_Controller {
      */
     public function index() {
         $this->response_success(array(
-            'name' => 'ARI Dialer API',
+            'name' => 'A-Dial API',
             'version' => '1.0',
             'user' => array(
                 'id' => $this->user->id,

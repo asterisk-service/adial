@@ -1,8 +1,8 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-$lang['app_name'] = 'ARI Dialer';
-$lang['app_title'] = 'ARI Dialer';
+$lang['app_name'] = 'A-Dial';
+$lang['app_title'] = 'A-Dial';
 
 // Common buttons
 $lang['btn_save'] = 'Save';

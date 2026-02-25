@@ -356,7 +356,6 @@ Developed for FreePBX/Asterisk systems using AMI and dialplan-based routing.
 ## Changelog
 
 ### Version 2.0.0 (AMI)
-- Complete migration from ARI to AMI
 - Dialplan-based IVR routing
 - Native Asterisk CDR integration
 - Account code filtering

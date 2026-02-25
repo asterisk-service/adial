@@ -6,7 +6,6 @@ $lang['dashboard_title'] = 'Dashboard';
 // System Status
 $lang['dashboard_asterisk_status'] = 'Asterisk Status';
 $lang['dashboard_database_status'] = 'Database Status';
-$lang['dashboard_ari_websocket'] = 'ARI WebSocket';
 $lang['dashboard_active_channels'] = 'Active Channels';
 
 // Statistics
