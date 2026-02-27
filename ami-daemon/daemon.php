@@ -26,6 +26,7 @@ class ADialDaemon {
     private $activeCalls = [];
     private $lastCampaignReload = 0;
     private $lastCampaignProcess = [];
+    private $lastStaleCheck = 0;
 
     public function __construct() {
         // Load configuration
@@ -217,6 +218,12 @@ class ADialDaemon {
                         $this->processCampaign($campaignId);
                         $this->lastCampaignProcess[$campaignId] = time();
                     }
+                }
+
+                // Cleanup stale active calls every 30 seconds
+                if (time() - $this->lastStaleCheck > 30) {
+                    $this->cleanupStaleCalls();
+                    $this->lastStaleCheck = time();
                 }
 
                 // Keep connection alive (every 15s to prevent firewall/NAT idle timeout)
@@ -513,7 +520,7 @@ class ADialDaemon {
                 'started_at' => time()
             ];
 
-            $this->logger->info("Originated call: Campaign $campaignId, Number $numberId ($phoneNumber)");
+            $this->logger->info("Originated call: Campaign $campaignId, Number $numberId ($phoneNumber), currentCalls={$this->campaigns[$campaignId]['currentCalls']}");
 
         } catch (Exception $e) {
             $this->logger->error("Failed to originate call for number $numberId: " . $e->getMessage());
@@ -594,7 +601,8 @@ class ADialDaemon {
                 );
             }
 
-            $this->logger->info("Call ended: Campaign $campaignId, Number $numberId, Disposition: $disposition");
+            $currentCalls = $this->campaigns[$campaignId]['currentCalls'] ?? 0;
+            $this->logger->info("Call ended: Campaign $campaignId, Number $numberId, Disposition: $disposition, currentCalls=$currentCalls");
 
         } catch (PDOException $e) {
             $this->logger->error("Failed to handle hangup event: " . $e->getMessage());
@@ -918,6 +926,79 @@ class ADialDaemon {
         } catch (PDOException $e) {
             $this->logger->error("Failed to handle retry logic for number $numberId: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Cleanup stale active calls that may have been missed due to AMI disconnect
+     * Checks database for numbers stuck in 'dialing' or 'calling' status
+     */
+    private function cleanupStaleCalls() {
+        try {
+            // Find numbers stuck in 'dialing' or 'calling' for more than dial_timeout + call_timeout + 60s buffer
+            $stmt = $this->db->query("
+                SELECT cn.id, cn.campaign_id, cn.phone_number, cn.status, cn.last_attempt,
+                       c.dial_timeout, c.call_timeout
+                FROM campaign_numbers cn
+                JOIN campaigns c ON c.id = cn.campaign_id
+                WHERE cn.status IN ('dialing', 'calling')
+                  AND cn.last_attempt IS NOT NULL
+                  AND cn.last_attempt < DATE_SUB(NOW(), INTERVAL (COALESCE(c.dial_timeout, 30) + COALESCE(c.call_timeout, 600) + 60) SECOND)
+            ");
+
+            $staleNumbers = $stmt->fetchAll();
+
+            foreach ($staleNumbers as $number) {
+                $numberId = $number->id;
+                $campaignId = $number->campaign_id;
+                $phoneNumber = $number->phone_number;
+
+                $this->logger->warning("Stale call detected: Campaign $campaignId, Number $numberId ($phoneNumber), Status: {$number->status} since {$number->last_attempt}");
+
+                // Mark as failed
+                $this->db->prepare("UPDATE campaign_numbers SET status = 'failed' WHERE id = ?")->execute([$numberId]);
+
+                // Remove from activeCalls and decrement counter
+                if (isset($this->activeCalls[$campaignId])) {
+                    $this->activeCalls[$campaignId] = array_filter(
+                        $this->activeCalls[$campaignId],
+                        function($call) use ($numberId) {
+                            return $call['number_id'] != $numberId;
+                        }
+                    );
+                }
+
+                if (isset($this->campaigns[$campaignId])) {
+                    $this->campaigns[$campaignId]['currentCalls'] = max(0, $this->campaigns[$campaignId]['currentCalls'] - 1);
+                    $this->logger->info("Stale call cleanup: Campaign $campaignId currentCalls={$this->campaigns[$campaignId]['currentCalls']}");
+                }
+            }
+        } catch (PDOException $e) {
+            $this->logger->error("Failed to cleanup stale calls: " . $e->getMessage());
+        }
+
+        // Also sync currentCalls with actual activeCalls count
+        foreach ($this->campaigns as $campaignId => &$campaign) {
+            $actualActive = isset($this->activeCalls[$campaignId]) ? count($this->activeCalls[$campaignId]) : 0;
+
+            // Check for stale entries in activeCalls (older than dial_timeout + call_timeout + 60s)
+            $maxAge = ($campaign['dial_timeout'] ?? 30) + ($campaign['call_timeout'] ?? 600) + 60;
+
+            if (isset($this->activeCalls[$campaignId])) {
+                foreach ($this->activeCalls[$campaignId] as $key => $call) {
+                    if (time() - $call['started_at'] > $maxAge) {
+                        $this->logger->warning("Removing stale activeCalls entry: Campaign $campaignId, Number {$call['number_id']} ({$call['phone_number']}), age: " . (time() - $call['started_at']) . "s");
+                        unset($this->activeCalls[$campaignId][$key]);
+                    }
+                }
+                $actualActive = count($this->activeCalls[$campaignId]);
+            }
+
+            if ($campaign['currentCalls'] != $actualActive) {
+                $this->logger->warning("currentCalls mismatch for Campaign $campaignId: counter={$campaign['currentCalls']}, actual=$actualActive - correcting");
+                $campaign['currentCalls'] = $actualActive;
+            }
+        }
+        unset($campaign);
     }
 
     /**
