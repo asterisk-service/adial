@@ -196,6 +196,8 @@ class Campaigns extends MY_Controller {
                 $this->db->where('campaign_id', $id);
                 $this->db->update('campaign_numbers', array(
                     'status' => 'pending',
+                    'status_a' => NULL,
+                    'status_b' => NULL,
                     'attempts' => 0,
                     'last_attempt' => NULL
                 ));
